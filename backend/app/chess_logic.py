@@ -12,11 +12,30 @@ def create_board():
         ['R','N','B','Q','K','B','N','R']
     ]
 
+# Castling rights: track whether king/rooks have moved
+castling_rights = {
+    'white': {'K': True, 'Q': True},  # K = king-side, Q = queen-side
+    'black': {'K': True, 'Q': True}
+}
+
 # print board in terminal
 def print_board(board):
     for row in board:
         print(' '.join(row))
     print() 
+
+def _update_castling_rights_on_capture(to_x, to_y, captured_piece):
+    # If a rook on its original square gets captured, revoke that side's right
+    if captured_piece == 'R':
+        if (to_x, to_y) == (7, 0):
+            castling_rights['white']['Q'] = False
+        elif (to_x, to_y) == (7, 7):
+            castling_rights['white']['K'] = False
+    elif captured_piece == 'r':
+        if (to_x, to_y) == (0, 0):
+            castling_rights['black']['Q'] = False
+        elif (to_x, to_y) == (0, 7):
+            castling_rights['black']['K'] = False
 
 # pawn logic
 def get_pawn_moves(board, x, y):
@@ -123,14 +142,14 @@ def get_king_moves(board, x, y):
     #castling
     if piece == 'K' and x == 7 and y == 4:
         # King-side
-        if board[7][5] == board[7][6] == '.' and board[7][7] == 'R':
+        if castling_rights['white']['K'] and board[7][5] == board[7][6] == '.' and board[7][7] == 'R':
             if not is_in_check(board, 'white'):
                 test_board = [row.copy() for row in board]
                 move_piece(test_board, 7, 4, 7, 5)
                 if not is_in_check(test_board, 'white'):
                     moves.append((7, 6))
         # Queen-side
-        if board[7][1] == board[7][2] == board[7][3] == '.' and board[7][0] == 'R':
+        if castling_rights['white']['Q'] and board[7][1] == board[7][2] == board[7][3] == '.' and board[7][0] == 'R':
             if not is_in_check(board, 'white'):
                 test_board = [row.copy() for row in board]
                 move_piece(test_board, 7, 4, 7, 3)
@@ -139,14 +158,14 @@ def get_king_moves(board, x, y):
 
     if piece == 'k' and x == 0 and y == 4:
         #kingside
-        if board[0][5] == board[0][6] == '.' and board[0][7] == 'r':
+        if castling_rights['black']['K'] and board[0][5] == board[0][6] == '.' and board[0][7] == 'r':
             if not is_in_check(board, 'black'):
                 test_board = [row.copy() for row in board]
                 move_piece(test_board, 0, 4, 0, 5)
                 if not is_in_check(test_board, 'black'):
                     moves.append((0, 6))
         #queenside
-        if board[0][1] == board[0][2] == board[0][3] == '.' and board[0][0] == 'r':
+        if castling_rights['black']['Q'] and board[0][1] == board[0][2] == board[0][3] == '.' and board[0][0] == 'r':
             if not is_in_check(board, 'black'):
                 test_board = [row.copy() for row in board]
                 move_piece(test_board, 0, 4, 0, 3)
@@ -219,8 +238,70 @@ def is_stalemate(board, color):
 
 def move_piece(board, from_x, from_y, to_x, to_y):
     piece = board[from_x][from_y]
+    captured = board[to_x][to_y]
+
+   
+    if captured in {'R', 'r'}:
+        _update_castling_rights_on_capture(to_x, to_y, captured)
+
+   
+    if piece == 'K' and (from_x, from_y) == (7, 4):
+        
+        if (to_x, to_y) == (7, 6):
+            board[7][5] = 'R'
+            board[7][7] = '.'
+        
+        elif (to_x, to_y) == (7, 2):
+            board[7][3] = 'R'
+            board[7][0] = '.'
+        
+        castling_rights['white']['K'] = False
+        castling_rights['white']['Q'] = False
+
+
+    elif piece == 'k' and (from_x, from_y) == (0, 4):
+        
+        if (to_x, to_y) == (0, 6):
+            board[0][5] = 'r'
+            board[0][7] = '.'
+    
+        elif (to_x, to_y) == (0, 2):
+            board[0][3] = 'r'
+            board[0][0] = '.'
+        
+        castling_rights['black']['K'] = False
+        castling_rights['black']['Q'] = False
+
+    if piece == 'R':
+        if (from_x, from_y) == (7, 0):
+            castling_rights['white']['Q'] = False
+        elif (from_x, from_y) == (7, 7):
+            castling_rights['white']['K'] = False
+
+    if piece == 'r':
+        if (from_x, from_y) == (0, 0):
+            castling_rights['black']['Q'] = False
+        elif (from_x, from_y) == (0, 7):
+            castling_rights['black']['K'] = False
+
     board[to_x][to_y] = piece
     board[from_x][from_y] = '.'
+
+def handle_pawn_promotion(board, x, y):
+    """Promote a pawn that has reached the last rank. Defaults to a queen if input is invalid/empty."""
+    piece = board[x][y]
+    
+    if piece == 'P' and x == 0:
+        choice = input("Promote pawn to (Q,R,B,N) [Q]: ").strip().upper()
+        if choice not in {'Q', 'R', 'B', 'N'}:
+            choice = 'Q'
+        board[x][y] = choice
+    
+    elif piece == 'p' and x == 7:
+        choice = input("Promote pawn to (q,r,b,n) [q]: ").strip().lower()
+        if choice not in {'q', 'r', 'b', 'n'}:
+            choice = 'q'
+        board[x][y] = choice
 
 def get_piece_moves(board, x, y):
     piece = board[x][y]
@@ -280,6 +361,7 @@ if __name__ == "__main__":
                 continue
 
             move_piece(board, x, y, to_x, to_y)
+            handle_pawn_promotion(board, to_x, to_y)
 
             if is_checkmate(board, turn):
                 print_board(board)

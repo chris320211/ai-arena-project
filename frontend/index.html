@@ -1,0 +1,154 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chess</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; }
+    .board { display: grid; grid-template-columns: repeat(8, 64px); grid-template-rows: repeat(8, 64px); border: 2px solid #333; }
+    .square { width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; font-size: 40px; user-select: none; cursor: pointer; }
+    .light { background: #f0d9b5; }
+    .dark  { background: #b58863; }
+    .highlight { outline: 3px solid #4caf50; }
+    .selected  { outline: 3px solid #2196f3; }
+    #turn { margin: 8px 0; font-weight: 600; }
+    #status { margin-top: 10px; min-height: 1.2em; }
+    .top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    button { padding: 6px 10px; border: 1px solid #333; background: #fff; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <h1 style="margin:0">Chess</h1>
+    <div id="turn"></div>
+    <button id="resetBtn" title="Reset to starting position">Reset</button>
+  </div>
+  <div id="board" class="board" aria-label="Chessboard"></div>
+  <div id="status"></div>
+
+  <script>
+    const API = ""; 
+    const boardDiv = document.getElementById("board");
+    const turnDiv = document.getElementById("turn");
+    const statusDiv = document.getElementById("status");
+    const resetBtn = document.getElementById("resetBtn");
+
+    let state = { board: [], turn: "white" };
+    let selected = null;          
+    let legalMoves = [];          
+
+    const PIECE = {
+      "P":"\u2659","R":"\u2656","N":"\u2658","B":"\u2657","Q":"\u2655","K":"\u2654",
+      "p":"\u265F","r":"\u265C","n":"\u265E","b":"\u265D","q":"\u265B","k":"\u265A",".":""
+    };
+
+    async function fetchState() {
+      const res = await fetch(`${API}/state`);
+      state = await res.json();
+      renderBoard();
+      renderTurn();
+      statusDiv.textContent = "";
+    }
+
+    function renderTurn() {
+      turnDiv.textContent = `${state.turn.charAt(0).toUpperCase() + state.turn.slice(1)} to move`;
+    }
+
+    function sqId(x,y){ return `sq-${x}-${y}`; }
+
+    function renderBoard() {
+      boardDiv.innerHTML = "";
+      for (let x = 0; x < 8; x++) {
+        for (let y = 0; y < 8; y++) {
+          const sq = document.createElement("div");
+          sq.id = sqId(x,y);
+          sq.className = `square ${(x + y) % 2 === 0 ? "light" : "dark"}`;
+          sq.textContent = PIECE[state.board[x][y]];
+          sq.addEventListener("click", () => onSquareClick(x,y));
+          boardDiv.appendChild(sq);
+        }
+      }
+      if (selected) {
+        document.getElementById(sqId(selected.x, selected.y)).classList.add("selected");
+        for (const [mx,my] of legalMoves) {
+          document.getElementById(sqId(mx,my)).classList.add("highlight");
+        }
+      }
+    }
+
+    async function onSquareClick(x,y) {
+      if (!selected) {
+        const piece = state.board[x][y];
+        if (piece === ".") return;
+        if (state.turn === "white" && piece === piece.toLowerCase()) return;
+        if (state.turn === "black" && piece === piece.toUpperCase()) return;
+
+        const res = await fetch(`${API}/moves?x=${x}&y=${y}`);
+        const data = await res.json();
+        selected = {x,y};
+        legalMoves = data.moves || [];
+        renderBoard();
+        return;
+      }
+
+      if (selected.x === x && selected.y === y) {
+        selected = null; legalMoves = []; renderBoard(); return;
+      }
+
+      const isLegal = legalMoves.some(([mx,my]) => mx === x && my === y);
+      if (isLegal) {
+        let promotion = null;
+        const moving = state.board[selected.x][selected.y];
+        if ((moving === "P" && x === 0) || (moving === "p" && x === 7)) {
+          const raw = prompt("Promote to (Q/R/B/N). Leave blank for queen:");
+          if (raw && /^[QRBNqrbn]$/.test(raw.trim())) promotion = raw.trim();
+        }
+
+        const res = await fetch(`${API}/move`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ from_sq: selected, to_sq: {x,y}, promotion })
+        });
+
+        if (!res.ok) {
+          const msg = await res.text();
+          alert(`Move error: ${msg}`);
+          return;
+        }
+
+        const data = await res.json();
+        state.board = data.board;
+        state.turn = data.turn;
+        selected = null; legalMoves = [];
+        renderBoard();
+        renderTurn();
+
+        const s = data.status || {};
+        if (s.checkmate) statusDiv.textContent = "Checkmate!";
+        else if (s.stalemate) statusDiv.textContent = "Stalemate!";
+        else if (s.check) statusDiv.textContent = "Check!";
+        else statusDiv.textContent = "";
+      } else {
+        const piece = state.board[x][y];
+        if (piece !== "." &&
+            ((state.turn === "white" && piece === piece.toUpperCase()) ||
+             (state.turn === "black" && piece === piece.toLowerCase()))) {
+          const res = await fetch(`${API}/moves?x=${x}&y=${y}`);
+          const data = await res.json();
+          selected = {x,y};
+          legalMoves = data.moves || [];
+          renderBoard();
+        } else {
+          selected = null; legalMoves = []; renderBoard();
+        }
+      }
+    }
+
+    resetBtn.addEventListener("click", fetchState);
+    fetchState();
+  </script>
+</body>
+</html>
