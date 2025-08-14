@@ -137,7 +137,7 @@ OLLAMA_MODEL_PHI35=phi3.5
 - **Backend not starting**: Run `python setup.py` in the backend directory, then activate venv
 - **Frontend not loading**: Run `npm install` in the frontend directory
 - **AI opponents not working**: Install Ollama and download models (`ollama pull llama3:8b`)
-- **Port conflicts**: Frontend runs on 5173, backend on 8000
+- **Port conflicts**: Frontend runs on 8080, backend on 8000
 
 ## Technologies Used
 

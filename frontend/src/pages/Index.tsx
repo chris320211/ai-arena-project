@@ -140,8 +140,19 @@ const Index = () => {
 
   // Trigger AI move using backend
   const triggerAIMove = useCallback(async () => {
-    if (!gameInProgress || !isAITurn() || isAIThinking) return;
+    console.log('triggerAIMove called with conditions:', { gameInProgress, isAITurn: isAITurn(), isAIThinking });
+    
+    if (!gameInProgress || !isAITurn() || isAIThinking) {
+      console.log('triggerAIMove early return due to conditions:', {
+        gameInProgress,
+        isAITurn: isAITurn(),
+        isAIThinking,
+        failing: !gameInProgress ? 'gameInProgress' : !isAITurn() ? 'isAITurn' : 'isAIThinking'
+      });
+      return;
+    }
 
+    console.log('Setting AI thinking to true');
     setIsAIThinking(true);
     setThinkingSteps([]);
     
@@ -153,19 +164,29 @@ const Index = () => {
       timestamp: Date.now()
     }]);
 
+    console.log('Making API call to /ai-step');
     try {
+      // Add 30 second timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
       const response = await fetch('http://localhost:8001/ai-step', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error('AI move failed');
       }
 
+      console.log('AI API call successful, processing response');
       const data = await response.json();
+      console.log('AI response data:', data);
       
       // Update board state
       const frontendPosition = convertBackendToFrontend(data.board);
@@ -223,17 +244,15 @@ const Index = () => {
     } finally {
       setIsAIThinking(false);
     }
-  }, [gameInProgress, isAIThinking]);
+  }, [gameInProgress, currentTurn, playerConfig, position]);
 
   // Auto-trigger AI moves
   useEffect(() => {
     if (gameInProgress && isAITurn() && !isAIThinking) {
-      const timer = setTimeout(() => {
-        triggerAIMove();
-      }, 1000);
-      return () => clearTimeout(timer);
+      console.log('Triggering AI move for:', currentTurn, 'isAI:', isAITurn(), 'gameInProgress:', gameInProgress, 'isAIThinking:', isAIThinking);
+      triggerAIMove();
     }
-  }, [gameInProgress, currentTurn, isAIThinking, triggerAIMove]);
+  }, [gameInProgress, currentTurn, isAIThinking, triggerAIMove]); // Added triggerAIMove back
 
   const getValidMoves = useCallback(async (square: string) => {
     try {
