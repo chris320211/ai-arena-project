@@ -1,192 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chess</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <div class="top">
-    <div class="top-inner">
-      <h1 style="margin:0">Chess</h1>
-      <nav class="top-links" aria-label="Top navigation">
-        <ul>
-          <li><a href="#statistics">Statistics</a></li>
-          <li><a href="#login">Login</a></li>
-          <li><a href="#settings">Settings</a></li>
-        </ul>
-      </nav>
-    </div>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mind-chess-arena</title>
+    <meta name="description" content="Lovable Generated Project" />
+    <meta name="author" content="Lovable" />
 
-  <div class="page">
-    <div class="board-wrap">
-      <aside class="right-panel">
-        <h2>AI Bots</h2>
-        <div class="right-section" id="moveList">Moves will appear here</div>
-        <div class="right-section">
-          <button id="newGameBtn" type="button">New Game</button>
-        </div>
-      </aside>
+    <meta property="og:title" content="mind-chess-arena" />
+    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-      <div id="board" class="board" aria-label="Chessboard"></div>
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@lovable_dev" />
+    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+  </head>
 
-      <aside class="right-panel right-panel">
-        <h2>Game Moves</h2>
-        <div class="right-section" id="gameStatus">Status here</div>
-        <div class="right-section" id="captured">Captured pieces</div>
-      </aside>
-    </div>
-
-    <div id="status"></div>
-  </div>
-
-  <script>
-    const API = ""; 
-    const boardDiv = document.getElementById("board");
-    const statusDiv = document.getElementById("status");
-    const newGameBtn = document.getElementById("newGameBtn");
-    if (newGameBtn) {
-      newGameBtn.addEventListener("click", newGame);
-    }
-    async function newGame() {
-      try {
-        let ok = false;
-        try {
-          const r = await fetch(`${API}/new`, { method: "POST" });
-          ok = r.ok;
-        } catch (e) {}
-        if (!ok) {
-          try {
-            const r2 = await fetch(`${API}/reset`, { method: "POST" });
-            ok = r2.ok;
-          } catch (e) {}
-        }
-        await fetchState();
-        statusDiv.textContent = "New game started.";
-        selected = null;
-        legalMoves = [];
-      } catch (err) {
-        statusDiv.textContent = "Failed to start a new game.";
-      }
-    }
-
-    let state = { board: [], turn: "white" };
-    let selected = null;          
-    let legalMoves = [];          
-
-    const PIECE = {
-      "P":"\u265F","R":"\u265C","N":"\u265E","B":"\u265D","Q":"\u265B","K":"\u265A",
-      "p":"\u265F","r":"\u265C","n":"\u265E","b":"\u265D","q":"\u265B","k":"\u265A",".":""
-    };
-
-    async function fetchState() {
-      const res = await fetch(`${API}/state`);
-      state = await res.json();
-      renderBoard();
-      statusDiv.textContent = "";
-    }
-
-
-    function sqId(x,y){ return `sq-${x}-${y}`; }
-
-    function renderBoard() {
-      boardDiv.innerHTML = "";
-      for (let x = 0; x < 8; x++) {
-        for (let y = 0; y < 8; y++) {
-          const sq = document.createElement("div");
-          sq.id = sqId(x,y);
-          sq.className = `square ${(x + y) % 2 === 0 ? "light" : "dark"}`;
-          const symbol = PIECE[state.board[x][y]];
-          sq.textContent = "";
-          if (symbol) {
-            const isWhite = state.board[x][y] === state.board[x][y].toUpperCase();
-            const pieceEl = document.createElement("span");
-            pieceEl.className = `piece ${isWhite ? "white" : "black"}`;
-            pieceEl.textContent = symbol;
-            sq.appendChild(pieceEl);
-          }
-          sq.addEventListener("click", () => onSquareClick(x,y));
-          boardDiv.appendChild(sq);
-        }
-      }
-      if (selected) {
-        document.getElementById(sqId(selected.x, selected.y)).classList.add("selected");
-        for (const [mx,my] of legalMoves) {
-          document.getElementById(sqId(mx,my)).classList.add("highlight");
-        }
-      }
-    }
-
-    async function onSquareClick(x,y) {
-      if (!selected) {
-        const piece = state.board[x][y];
-        if (piece === ".") return;
-        if (state.turn === "white" && piece === piece.toLowerCase()) return;
-        if (state.turn === "black" && piece === piece.toUpperCase()) return;
-
-        const res = await fetch(`${API}/moves?x=${x}&y=${y}`);
-        const data = await res.json();
-        selected = {x,y};
-        legalMoves = data.moves || [];
-        renderBoard();
-        return;
-      }
-
-      if (selected.x === x && selected.y === y) {
-        selected = null; legalMoves = []; renderBoard(); return;
-      }
-
-      const isLegal = legalMoves.some(([mx,my]) => mx === x && my === y);
-      if (isLegal) {
-        let promotion = null;
-        const moving = state.board[selected.x][selected.y];
-        if ((moving === "P" && x === 0) || (moving === "p" && x === 7)) {
-          const raw = prompt("Promote to (Q/R/B/N). Leave blank for queen:");
-          if (raw && /^[QRBNqrbn]$/.test(raw.trim())) promotion = raw.trim();
-        }
-
-        const res = await fetch(`${API}/move`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ from_sq: selected, to_sq: {x,y}, promotion })
-        });
-
-        if (!res.ok) {
-          const msg = await res.text();
-          alert(`Move error: ${msg}`);
-          return;
-        }
-
-        const data = await res.json();
-        state.board = data.board;
-        state.turn = data.turn;
-        selected = null; legalMoves = [];
-        renderBoard();
-
-        const s = data.status || {};
-        if (s.checkmate) statusDiv.textContent = "Checkmate!";
-        else if (s.stalemate) statusDiv.textContent = "Stalemate!";
-        else if (s.check) statusDiv.textContent = "Check!";
-        else statusDiv.textContent = "";
-      } else {
-        const piece = state.board[x][y];
-        if (piece !== "." &&
-            ((state.turn === "white" && piece === piece.toUpperCase()) ||
-             (state.turn === "black" && piece === piece.toLowerCase()))) {
-          const res = await fetch(`${API}/moves?x=${x}&y=${y}`);
-          const data = await res.json();
-          selected = {x,y};
-          legalMoves = data.moves || [];
-          renderBoard();
-        } else {
-          selected = null; legalMoves = []; renderBoard();
-        }
-      }
-    }
-
-    fetchState();
-  </script>
-</body>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

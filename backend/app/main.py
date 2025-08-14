@@ -14,6 +14,16 @@ from .chess_logic import (
     is_in_check, is_checkmate, is_stalemate,
 )
 
+def _clone_board(board):
+    return [row[:] for row in board]
+
+def _is_strict_legal(board, side: str, fx: int, fy: int, tx: int, ty: int) -> bool:
+    if (tx, ty) not in get_piece_moves(board, fx, fy):
+        return False
+    temp = _clone_board(board)
+    move_piece(temp, fx, fy, tx, ty)
+    return not is_in_check(temp, side)
+
 def _collect_legal_moves_for_side(board, side):
     moves = []
     for x in range(8):
@@ -26,7 +36,8 @@ def _collect_legal_moves_for_side(board, side):
             if side == 'black' and not piece.islower():
                 continue
             for tx, ty in get_piece_moves(board, x, y):
-                moves.append((x, y, tx, ty))
+                if _is_strict_legal(board, side, x, y, tx, ty):
+                    moves.append((x, y, tx, ty))
     return moves
 
 class RandomAI:
@@ -127,7 +138,8 @@ app.add_middleware(NoCacheStaticMiddleware)
 
 STATE = {
     "board": create_board(),
-    "turn": "white"
+    "turn": "white",
+    "last_move": None,  # {"from":"e2","to":"e4"}
 }
 
 class Square(BaseModel):
@@ -176,23 +188,25 @@ def _legal_moves_alg(board, side) -> List[dict]:
 
 @app.get("/state")
 def get_state():
-    return {"board": STATE["board"], "turn": STATE["turn"]}
+    return {"board": STATE["board"], "turn": STATE["turn"], "last_move": STATE.get("last_move")}
 
 @app.get("/state_array")
 def get_state_array():
-    return {"board_array": _board_array(STATE["board"]), "turn": STATE["turn"]}
+    return {"board_array": _board_array(STATE["board"]), "turn": STATE["turn"], "last_move": STATE.get("last_move")}
 
 @app.post("/new")
 def new_game():
     STATE["board"] = create_board()
     STATE["turn"] = "white"
-    return {"board": STATE["board"], "turn": STATE["turn"]}
+    STATE["last_move"] = None
+    return {"board": STATE["board"], "turn": STATE["turn"], "last_move": STATE["last_move"]}
 
 @app.post("/reset")
 def reset_game():
     STATE["board"] = create_board()
     STATE["turn"] = "white"
-    return {"board": STATE["board"], "turn": STATE["turn"]}
+    STATE["last_move"] = None
+    return {"board": STATE["board"], "turn": STATE["turn"], "last_move": STATE["last_move"]}
 
 @app.get("/moves")
 def get_moves(x: int, y: int):
@@ -207,7 +221,8 @@ def get_moves(x: int, y: int):
     if STATE["turn"] == "black" and piece.isupper():
         return {"moves": []}
     moves: List[Tuple[int,int]] = get_piece_moves(board, x, y)
-    return {"moves": moves}
+    strict = [(tx, ty) for (tx, ty) in moves if _is_strict_legal(board, STATE["turn"], x, y, tx, ty)]
+    return {"moves": strict}
 
 @app.get("/ai/prompt")
 def ai_prompt():
@@ -261,6 +276,9 @@ def make_move(payload: MovePayload):
     if (tx, ty) not in legal:
         raise HTTPException(400, "Illegal move")
 
+    if not _is_strict_legal(board, turn, fx, fy, tx, ty):
+        raise HTTPException(400, "Illegal move (king would be in check)")
+
     move_piece(board, fx, fy, tx, ty)
 
     moved = board[tx][ty]
@@ -273,6 +291,8 @@ def make_move(payload: MovePayload):
         if board[tx][ty] not in {'q','r','b','n'}:
             board[tx][ty] = 'q'
 
+    STATE["last_move"] = {"from": _xy_to_alg(fx, fy), "to": _xy_to_alg(tx, ty)}
+
     opp = "black" if turn == "white" else "white"
     checkmate = is_checkmate(board, opp)
     stalemate = is_stalemate(board, opp)
@@ -283,6 +303,7 @@ def make_move(payload: MovePayload):
     return {
         "board": board,
         "turn": STATE["turn"],
+        "last_move": STATE["last_move"],
         "status": {
             "check": in_check,
             "checkmate": checkmate,
@@ -316,6 +337,10 @@ def ai_submit(payload: BotMove):
     legal = get_piece_moves(board, fx, fy)
     if (tx, ty) not in legal:
         raise HTTPException(400, "Illegal move")
+
+    if not _is_strict_legal(board, turn, fx, fy, tx, ty):
+        raise HTTPException(400, "Illegal move (king would be in check)")
+
     move_piece(board, fx, fy, tx, ty)
     moved = board[tx][ty]
     if moved == 'P' and tx == 0:
@@ -324,6 +349,9 @@ def ai_submit(payload: BotMove):
     elif moved == 'p' and tx == 7:
         promo = (payload.promotion or 'q')
         board[tx][ty] = promo if promo in {'q','r','b','n'} else 'q'
+
+    STATE["last_move"] = {"from": payload.from_, "to": payload.to}
+
     opp = "black" if turn == "white" else "white"
     checkmate = is_checkmate(board, opp)
     stalemate = is_stalemate(board, opp)
@@ -332,6 +360,7 @@ def ai_submit(payload: BotMove):
     return {
         "board": board,
         "turn": STATE["turn"],
+        "last_move": STATE["last_move"],
         "status": {"check": in_check, "checkmate": checkmate, "stalemate": stalemate}
     }
 
@@ -371,6 +400,7 @@ def set_bots(payload: SetBotsPayload):
 def _apply_move_tuple(board, mv):
     fx, fy, tx, ty = mv
     move_piece(board, fx, fy, tx, ty)
+    STATE["last_move"] = {"from": _xy_to_alg(fx, fy), "to": _xy_to_alg(tx, ty)}
 
 
 @app.post("/ai-step")
@@ -387,8 +417,12 @@ def ai_step():
         mv = engine.choose(board, turn)
     except Exception as e:
         raise HTTPException(500, f"{bot_name} engine error: {e}")
-    if mv is None:
+    pool = _collect_legal_moves_for_side(board, turn)
+    if not pool:
         raise HTTPException(400, "Bot cannot make a move (no legal moves)")
+    if mv not in pool:
+       
+        mv = pool[0]
     _apply_move_tuple(board, mv)
     tx, ty = mv[2], mv[3]
     moved = board[tx][ty]
@@ -404,6 +438,7 @@ def ai_step():
     return {
         "board": board,
         "turn": STATE["turn"],
+        "last_move": STATE["last_move"],
         "status": {
             "check": in_check,
             "checkmate": checkmate,
@@ -462,3 +497,11 @@ def api_diag():
         "bots": BOTS,
         "turn": STATE["turn"],
     }
+
+@app.get("/last-move")
+def last_move():
+    return {"last_move": STATE.get("last_move")}
+
+@app.get("/api/last-move")
+def api_last_move():
+    return last_move()
