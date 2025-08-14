@@ -6,10 +6,29 @@ services:
       - "8001:8000"
     environment:
       - PYTHONPATH=/app
+      - MONGODB_URL=mongodb://mongodb:27017/ai-arena
     env_file:
       - .env
     volumes:
       - ./backend:/app/backend
+    depends_on:
+      - mongodb
+    networks:
+      - ai-arena-network
+
+  mongodb:
+    image: mongo:7
+    container_name: ai-arena-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - ai-arena-network
+
+volumes:
+  mongodb_data:
 
 networks:
   ai-arena-network:
