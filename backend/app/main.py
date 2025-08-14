@@ -7,17 +7,7 @@ from pathlib import Path
 from starlette.middleware.base import BaseHTTPMiddleware
 
 import os
-from typing import Any, Dict
-
-try:
-    from openai import OpenAI  
-except Exception: 
-    OpenAI = None  
-
-try:
-    import anthropic 
-except Exception:  
-    anthropic = None  
+import requests
 
 from .chess_logic import (
     create_board, print_board, get_piece_moves, move_piece,
@@ -47,60 +37,26 @@ class RandomAI:
         import random
         return random.choice(pool)
 
-class OpenAIAI:
-    def __init__(self, model: str = None):
-        self.model = model or os.getenv("OPENAI_MODEL", "gpt-5")
-        self.client = OpenAI() if OpenAI else None
+class OllamaAI:
+    def __init__(self, model: str, base: str | None = None):
+        self.model = model
+        self.base = base or os.getenv("OLLAMA_BASE", "http://127.0.0.1:11434")
 
-    def choose(self, board, side):
-        if not self.client:
-            raise HTTPException(500, "OpenAI SDK not available. pip install openai")
-        legal = _legal_moves_alg(board, side)
-        prompt = {
-            "role": "system",
-            "content": (
-                "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
-                "matching: {from:'e2', to:'e4', promotion:null}. Use provided legal_moves."
-            ),
-        }
-        user = {
-            "role": "user",
-            "content": (
-                f"turn: {side}\n"
-                f"legal_moves: {legal}\n"
-                f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
-                "If multiple good choices exist, prefer checks, captures, and center control."
-            ),
-        }
-        
-        resp = self.client.chat.completions.create(
-            model=self.model,
-            messages=[prompt, user],
-            temperature=0,
-            response_format={"type": "json_object"},
-        )
-        txt = resp.choices[0].message.content
-        import json
+    def _post(self, payload):
+        url = f"{self.base.rstrip('/')}/api/generate"
         try:
-            data = json.loads(txt)
-            fx, fy = _alg_to_xy(data["from"])  
-            tx, ty = _alg_to_xy(data["to"])    
-            return (fx, fy, tx, ty)
+            r = requests.post(url, json=payload, timeout=60)
+            r.raise_for_status()
+            return r.json()
         except Exception as e:
-            raise HTTPException(500, f"OpenAI bad JSON: {e}")
-
-class ClaudeAI:
-    def __init__(self, model: str = None):
-        self.model = model or os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-latest")
-        self.client = anthropic.Anthropic() if anthropic else None
+            raise HTTPException(500, f"Ollama request failed: {e}")
 
     def choose(self, board, side):
-        if not self.client:
-            raise HTTPException(500, "Anthropic SDK not available. pip install anthropic")
         legal = _legal_moves_alg(board, side)
         system_text = (
             "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
-            "matching: {from:'e2', to:'e4', promotion:null}. Use provided legal_moves."
+            "matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
+            "Choose strictly from the provided legal_moves."
         )
         user_text = (
             f"turn: {side}\n"
@@ -108,49 +64,41 @@ class ClaudeAI:
             f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
             "If multiple good choices exist, prefer checks, captures, and center control."
         )
-        resp = self.client.messages.create(
-            model=self.model,
-            max_tokens=200,
-            temperature=0,
-            system=system_text,
-            messages=[{"role": "user", "content": user_text}],
-        )
-        # Anthropic returns content blocks; prefer the first text block
-        txt = ""
-        if resp.content and len(resp.content) > 0 and getattr(resp.content[0], "type", "") == "text":
-            txt = getattr(resp.content[0], "text", "")
-        else:
-            parts = [getattr(p, "text", "") for p in (resp.content or []) if getattr(p, "type", "") == "text"]
-            txt = "".join(parts)
+        prompt = system_text + "\n\n" + user_text
+        data = self._post({
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"temperature": 0}
+        })
+        txt = data.get("response", "")
         import json, re
         try:
-            data = json.loads(txt)
+            obj = json.loads(txt)
         except Exception:
-            # Fallback: extract first plausible JSON object
             candidates = re.findall(r"\{.*?\}", txt, flags=re.S)
-            data = None
+            obj = None
             for c in candidates:
                 try:
-                    obj = json.loads(c)
-                    if isinstance(obj, dict) and "to" in obj and ("from" in obj or "from_" in obj):
-                        data = obj
+                    o = json.loads(c)
+                    if isinstance(o, dict) and "to" in o and ("from" in o or "from_" in o):
+                        obj = o
                         break
                 except Exception:
                     continue
-            if data is None:
+            if obj is None:
                 snippet = txt[:160].replace("\n"," ")
-                raise HTTPException(500, f"Claude bad JSON; got: {snippet}...")
-        # Normalize keys
-        if "from" in data and "from_" not in data:
-            data["from_"] = data["from"]
-        fx, fy = _alg_to_xy(data["from_"])  # e.g., "e2"
-        tx, ty = _alg_to_xy(data["to"])    # e.g., "e4"
+                raise HTTPException(500, f"Ollama bad JSON; got: {snippet}...")
+        if "from" in obj and "from_" not in obj:
+            obj["from_"] = obj["from"]
+        fx, fy = _alg_to_xy(obj["from_"])
+        tx, ty = _alg_to_xy(obj["to"]) 
         return (fx, fy, tx, ty)
 
 ENGINES = {
     "random": RandomAI(),
-    "openai": OpenAIAI(),
-    "claude": ClaudeAI(),
+    "ollama_llama3": OllamaAI(os.getenv("OLLAMA_MODEL_LLAMA3", "llama3:8b")),
+    "ollama_phi35": OllamaAI(os.getenv("OLLAMA_MODEL_PHI35", "phi3.5")),
 }
 
 BOTS = {
@@ -433,10 +381,6 @@ def ai_step():
     if not bot_name:
         raise HTTPException(400, f"No bot assigned for {turn}")
     engine = ENGINES.get(bot_name)
-    if bot_name == "openai" and not os.getenv("OPENAI_API_KEY"):
-        raise HTTPException(400, "Missing OPENAI_API_KEY in environment")
-    if bot_name == "claude" and not os.getenv("ANTHROPIC_API_KEY"):
-        raise HTTPException(400, "Missing ANTHROPIC_API_KEY in environment")
     if not engine:
         raise HTTPException(500, f"Bot engine not found: {bot_name}")
     try:
@@ -510,12 +454,11 @@ def api_ai_legal_moves():
 @app.get("/api/diag")
 def api_diag():
     return {
-        "openai_sdk": bool(OpenAI),
-        "anthropic_sdk": bool(anthropic),
-        "openai_key_present": bool(os.getenv("OPENAI_API_KEY")),
-        "anthropic_key_present": bool(os.getenv("ANTHROPIC_API_KEY")),
-        "openai_model": os.getenv("OPENAI_MODEL", "gpt-5"),
-        "claude_model": os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-latest"),
+        "ollama_base": os.getenv("OLLAMA_BASE", "http://127.0.0.1:11434"),
+        "ollama_models": {
+            "ollama_llama3": os.getenv("OLLAMA_MODEL_LLAMA3", "llama3:8b"),
+            "ollama_phi35": os.getenv("OLLAMA_MODEL_PHI35", "phi3.5"),
+        },
         "bots": BOTS,
         "turn": STATE["turn"],
     }
