@@ -1,6 +1,6 @@
 # AI Arena Chess Project
 
-A full-stack chess application featuring AI opponents powered by Ollama models. Players can compete against different AI models or watch AI vs AI matches.
+A full-stack chess application featuring AI opponents powered by various AI models. Players can compete against different AI models or watch AI vs AI matches, with complete game statistics and ELO rankings stored in MongoDB.
 
 ## Project Structure
 
@@ -10,23 +10,28 @@ ai-arena-project/
 │   ├── app/
 │   │   ├── main.py           # Main FastAPI application
 │   │   ├── chess_logic.py    # Chess game logic and rules
+│   │   ├── database.py       # MongoDB models and operations
 │   │   └── __init__.py
 │   └── requirements.txt      # Python dependencies
-└── frontend/          # React + TypeScript frontend
-    ├── src/
-    │   ├── components/       # React components (ChessBoard, GameStats, etc.)
-    │   ├── pages/           # Application pages
-    │   └── main.tsx         # Application entry point
-    ├── package.json         # Node.js dependencies
-    └── vite.config.ts       # Vite configuration
+├── frontend/          # React + TypeScript frontend
+│   ├── src/
+│   │   ├── components/       # React components (ChessBoard, GameStats, etc.)
+│   │   ├── pages/           # Application pages
+│   │   └── main.tsx         # Application entry point
+│   ├── package.json         # Node.js dependencies
+│   └── vite.config.ts       # Vite configuration
+└── docker-compose.yml       # Docker services configuration
 ```
 
 ## Features
 
-- **Interactive Chess Board**: Drag-and-drop chess interface
-- **AI Opponents**: Multiple AI models including Llama3 and Phi3.5 via Ollama
+- **Interactive Chess Board**: Drag-and-drop chess interface with move validation
+- **AI Opponents**: Multiple AI models including GPT-4o Mini, Llama3, and Phi3.5
 - **AI vs AI Mode**: Watch AI models compete against each other
-- **Real-time Game State**: Live updates of board state, move validation, and game status
+- **Game Statistics**: Complete game history with MongoDB persistence
+- **ELO Rating System**: Competitive rankings for AI models
+- **Model Performance Analytics**: Win rates, average move times, and detailed statistics
+- **Real-time Updates**: Live game state and statistics refresh
 - **Modern UI**: Built with React, TypeScript, and Tailwind CSS using shadcn/ui components
 
 ## 🚀 Launch the Arena
@@ -37,23 +42,25 @@ ai-arena-project/
 
 **Deploy the battlefield:**
 ```bash
-# Copy environment template
+# Copy environment template (optional - creates .env for API keys)
 cp .env.example .env
 
-# Start backend (Docker)
+# Launch complete stack with MongoDB
 docker-compose up --build -d
 
-# Start frontend (Local)
+# Start frontend (Local development)
 cd frontend && npm install && npm run dev
 ```
 
 **Access your AI arena:**
 - 🎯 **Battle Interface:** http://localhost:8080/
-- 🧠 **AI Command Center:** http://localhost:8001/docs  
+- 🧠 **AI Command Center:** http://localhost:8001/docs
+- 📊 **Statistics Dashboard:** Available in the Stats tab of the frontend
 
 **Power down:**
 ```bash
 docker-compose down
+# To also remove data volumes: docker-compose down -v
 ```
 
 ---
