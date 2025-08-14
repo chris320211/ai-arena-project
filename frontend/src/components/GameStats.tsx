@@ -6,26 +6,25 @@ import { cn } from '@/lib/utils';
 import type { AIModel } from './ModelSelector';
 
 export type GameResult = {
-  id: string;
-  white: string;
-  black: string;
-  winner: 'white' | 'black' | 'draw';
+  _id: string;
+  white_model: string;
+  black_model: string;
+  winner: 'white' | 'black' | null;
   moves: number;
   duration: number;
-  endReason: 'checkmate' | 'resignation' | 'stalemate' | 'draw' | 'timeout';
-  timestamp: number;
+  end_reason: 'checkmate' | 'resignation' | 'stalemate' | 'draw' | 'timeout';
+  timestamp: string;
 };
 
 export type ModelStats = {
-  modelId: string;
-  gamesPlayed: number;
+  model_id: string;
+  games_played: number;
   wins: number;
   losses: number;
   draws: number;
-  winRate: number;
-  avgMoveTime: number;
+  win_rate: number;
+  avg_move_time: number;
   rating: number;
-  ratingChange: number;
 };
 
 interface GameStatsProps {
@@ -57,7 +56,7 @@ const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getEndReasonBadge = (reason: GameResult['endReason']) => {
+  const getEndReasonBadge = (reason: GameResult['end_reason']) => {
     const variants = {
       checkmate: { variant: 'destructive' as const, icon: <Crown className="w-3 h-3" /> },
       resignation: { variant: 'secondary' as const, icon: <Target className="w-3 h-3" /> },
@@ -91,11 +90,11 @@ const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
         <CardContent>
           <div className="space-y-4">
             {sortedStats.map((stats, index) => {
-              const model = getModelById(stats.modelId);
+              const model = getModelById(stats.model_id);
               if (!model) return null;
 
               return (
-                <div key={stats.modelId} className="flex items-center gap-4 p-3 rounded-lg border">
+                <div key={stats.model_id} className="flex items-center gap-4 p-3 rounded-lg border">
                   <div className="flex items-center gap-3 flex-1">
                     <div className="flex items-center gap-2">
                       <span className={cn(
@@ -121,20 +120,11 @@ const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
                         <Badge variant="outline" className="text-xs">
                           {stats.rating} ELO
                         </Badge>
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "text-xs",
-                            getRatingChangeColor(stats.ratingChange)
-                          )}
-                        >
-                          {stats.ratingChange > 0 ? '+' : ''}{stats.ratingChange}
-                        </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {stats.gamesPlayed} games • 
-                        <span className={cn("ml-1", getWinRateColor(stats.winRate))}>
-                          {stats.winRate.toFixed(1)}% win rate
+                        {stats.games_played} games • 
+                        <span className={cn("ml-1", getWinRateColor(stats.win_rate))}>
+                          {stats.win_rate.toFixed(1)}% win rate
                         </span>
                       </div>
                     </div>
@@ -144,7 +134,7 @@ const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
                         {stats.wins}W {stats.draws}D {stats.losses}L
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Avg: {stats.avgMoveTime}ms
+                        Avg: {Math.round(stats.avg_move_time)}s
                       </div>
                     </div>
                   </div>
@@ -173,13 +163,13 @@ const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-500">
-                {recentGames.filter(g => g.endReason === 'checkmate').length}
+                {recentGames.filter(g => g.end_reason === 'checkmate').length}
               </div>
               <div className="text-sm text-muted-foreground">Checkmates</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-500">
-                {recentGames.filter(g => g.winner === 'draw').length}
+                {recentGames.filter(g => g.winner === null).length}
               </div>
               <div className="text-sm text-muted-foreground">Draws</div>
             </div>
@@ -204,16 +194,16 @@ const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
         <CardContent>
           <div className="space-y-3">
             {recentGames.slice(0, 10).map((game) => {
-              const whiteModel = getModelById(game.white);
-              const blackModel = getModelById(game.black);
+              const whiteModel = getModelById(game.white_model);
+              const blackModel = getModelById(game.black_model);
               
               return (
-                <div key={game.id} className="flex items-center gap-4 p-3 rounded-lg border">
+                <div key={game._id} className="flex items-center gap-4 p-3 rounded-lg border">
                   <div className="flex items-center gap-2 flex-1">
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 bg-white border border-gray-800 rounded-full" />
                       <span className="text-sm font-medium">
-                        {whiteModel?.name || 'Human'}
+                        {whiteModel?.name || (game.white_model === 'human' ? 'Human' : game.white_model)}
                       </span>
                     </div>
                     
@@ -222,7 +212,7 @@ const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 bg-gray-800 rounded-full" />
                       <span className="text-sm font-medium">
-                        {blackModel?.name || 'Human'}
+                        {blackModel?.name || (game.black_model === 'human' ? 'Human' : game.black_model)}
                       </span>
                     </div>
                   </div>
@@ -236,11 +226,11 @@ const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
                       }
                       className="text-xs"
                     >
-                      {game.winner === 'draw' ? 'Draw' : 
+                      {game.winner === null ? 'Draw' : 
                        game.winner === 'white' ? 'White Wins' : 'Black Wins'}
                     </Badge>
                     
-                    {getEndReasonBadge(game.endReason)}
+                    {getEndReasonBadge(game.end_reason)}
                     
                     <div className="text-xs text-muted-foreground">
                       {game.moves} moves • {formatDuration(game.duration)}

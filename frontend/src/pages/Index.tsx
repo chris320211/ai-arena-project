@@ -126,9 +126,9 @@ const Index = () => {
   const [aiResponse, setAIResponse] = useState<AIResponse | null>(null);
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
 
-  // Game statistics
-  const [gameResults] = useState<GameResult[]>(MOCK_GAME_RESULTS);
-  const [modelStats] = useState<ModelStats[]>(MOCK_MODEL_STATS);
+  // Game statistics - now loaded from API
+  const [gameResults, setGameResults] = useState<GameResult[]>([]);
+  const [modelStats, setModelStats] = useState<ModelStats[]>([]);
 
   const getCurrentPlayer = () => {
     return playerConfig[currentTurn];
@@ -548,6 +548,27 @@ const Index = () => {
     const currentPlayer = getCurrentPlayer();
     return currentPlayer !== 'human' && typeof currentPlayer === 'object' ? currentPlayer : null;
   };
+
+  // Fetch statistics from API
+  const fetchStatistics = useCallback(async () => {
+    try {
+      // Fetch model stats
+      const modelResponse = await fetch('http://localhost:8001/api/stats/models');
+      if (modelResponse.ok) {
+        const modelData = await modelResponse.json();
+        setModelStats(modelData.model_stats || []);
+      }
+
+      // Fetch recent games
+      const gamesResponse = await fetch('http://localhost:8001/api/stats/games?limit=20');
+      if (gamesResponse.ok) {
+        const gamesData = await gamesResponse.json();
+        setGameResults(gamesData.games || []);
+      }
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">

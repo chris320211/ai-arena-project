@@ -428,6 +428,7 @@ async def make_move(payload: MovePayload):
             board[tx][ty] = 'q'
 
     STATE["last_move"] = {"from": _xy_to_alg(fx, fy), "to": _xy_to_alg(tx, ty)}
+    STATE["move_count"] += 1
 
     opp = "black" if turn == "white" else "white"
     checkmate = is_checkmate(board, opp)
@@ -435,6 +436,13 @@ async def make_move(payload: MovePayload):
     in_check = is_in_check(board, opp)
 
     STATE["turn"] = opp
+
+    # Handle game completion
+    if checkmate:
+        winner = "white" if opp == "black" else "black"
+        await save_completed_game(winner, "checkmate")
+    elif stalemate:
+        await save_completed_game(None, "stalemate")
 
     return {
         "board": board,
@@ -456,7 +464,7 @@ class BotMove(BaseModel):
         allow_population_by_field_name = True
 
 @app.post("/ai/submit")
-def ai_submit(payload: BotMove):
+async def ai_submit(payload: BotMove):
     board = STATE["board"]
     turn = STATE["turn"]
     fx, fy = _alg_to_xy(payload.from_)
@@ -487,12 +495,21 @@ def ai_submit(payload: BotMove):
         board[tx][ty] = promo if promo in {'q','r','b','n'} else 'q'
 
     STATE["last_move"] = {"from": payload.from_, "to": payload.to}
+    STATE["move_count"] += 1
 
     opp = "black" if turn == "white" else "white"
     checkmate = is_checkmate(board, opp)
     stalemate = is_stalemate(board, opp)
     in_check = is_in_check(board, opp)
     STATE["turn"] = opp
+
+    # Handle game completion
+    if checkmate:
+        winner = "white" if opp == "black" else "black"
+        await save_completed_game(winner, "checkmate")
+    elif stalemate:
+        await save_completed_game(None, "stalemate")
+
     return {
         "board": board,
         "turn": STATE["turn"],
@@ -540,7 +557,7 @@ def _apply_move_tuple(board, mv):
 
 
 @app.post("/ai-step")
-def ai_step():
+async def ai_step():
     board = STATE["board"]
     turn = STATE["turn"]
     bot_name = BOTS[turn]
@@ -568,6 +585,8 @@ def ai_step():
         print(f"Warning: {bot_name} returned invalid move, using fallback")
         mv = pool[0]
     _apply_move_tuple(board, mv)
+    STATE["move_count"] += 1
+    
     tx, ty = mv[2], mv[3]
     moved = board[tx][ty]
     if moved == 'P' and tx == 0:
@@ -579,6 +598,14 @@ def ai_step():
     stalemate = is_stalemate(board, opp)
     in_check = is_in_check(board, opp)
     STATE["turn"] = opp
+
+    # Handle game completion
+    if checkmate:
+        winner = "white" if opp == "black" else "black"
+        await save_completed_game(winner, "checkmate")
+    elif stalemate:
+        await save_completed_game(None, "stalemate")
+
     return {
         "board": board,
         "turn": STATE["turn"],
@@ -649,3 +676,24 @@ def last_move():
 @app.get("/api/last-move")
 def api_last_move():
     return last_move()
+
+# Statistics endpoints
+@app.get("/api/stats/games")
+async def get_game_stats(limit: int = 10):
+    """Get recent game results"""
+    try:
+        games = await get_recent_games(limit)
+        return {"games": [game.dict() for game in games]}
+    except Exception as e:
+        print(f"Error fetching game stats: {e}")
+        return {"games": []}
+
+@app.get("/api/stats/models")
+async def get_model_statistics():
+    """Get statistics for all models"""
+    try:
+        stats = await get_all_model_stats()
+        return {"model_stats": [stat.dict() for stat in stats]}
+    except Exception as e:
+        print(f"Error fetching model stats: {e}")
+        return {"model_stats": []}
