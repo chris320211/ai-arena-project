@@ -10,7 +10,28 @@ from .chess_logic import (
     is_in_check, is_checkmate, is_stalemate,
 )
 
-from .ai_engines import RandomAI
+def _collect_legal_moves_for_side(board, side):
+    moves = []
+    for x in range(8):
+        for y in range(8):
+            piece = board[x][y]
+            if piece == '.':
+                continue
+            if side == 'white' and not piece.isupper():
+                continue
+            if side == 'black' and not piece.islower():
+                continue
+            for tx, ty in get_piece_moves(board, x, y):
+                moves.append((x, y, tx, ty))
+    return moves
+
+class RandomAI:
+    def choose(self, board, side):
+        pool = _collect_legal_moves_for_side(board, side)
+        if not pool:
+            return None
+        import random
+        return random.choice(pool)
 ENGINES = {
     "random": RandomAI(),
 }
