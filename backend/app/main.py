@@ -12,6 +12,9 @@ import os
 import requests
 from dotenv import load_dotenv
 
+# Add OpenAI import
+from openai import OpenAI
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -112,10 +115,63 @@ class OllamaAI:
         tx, ty = _alg_to_xy(obj["to"]) 
         return (fx, fy, tx, ty)
 
+
+# Add OpenAIAI class
+class OpenAIAI:
+    def __init__(self, model: str):
+        self.model = model
+        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    def choose(self, board, side):
+        legal = _legal_moves_alg(board, side)
+        system_text = (
+            "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
+            "matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
+            "Choose strictly from the provided legal_moves."
+        )
+        user_text = (
+            f"turn: {side}\n"
+            f"legal_moves: {legal}\n"
+            f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
+            "If multiple good choices exist, prefer checks, captures, and center control."
+        )
+        resp = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_text},
+                {"role": "user", "content": user_text},
+            ],
+            temperature=0,
+        )
+        txt = resp.choices[0].message.content
+        import json, re
+        try:
+            obj = json.loads(txt)
+        except Exception:
+            candidates = re.findall(r"\{.*?\}", txt, flags=re.S)
+            obj = None
+            for c in candidates:
+                try:
+                    o = json.loads(c)
+                    if isinstance(o, dict) and "to" in o and ("from" in o or "from_" in o):
+                        obj = o
+                        break
+                except Exception:
+                    continue
+            if obj is None:
+                snippet = txt[:160].replace("\n"," ")
+                raise HTTPException(500, f"OpenAI bad JSON; got: {snippet}...")
+        if "from" in obj and "from_" not in obj:
+            obj["from_"] = obj["from"]
+        fx, fy = _alg_to_xy(obj["from_"])
+        tx, ty = _alg_to_xy(obj["to"])
+        return (fx, fy, tx, ty)
+
 ENGINES = {
     "random": RandomAI(),
     "ollama_llama3": OllamaAI(os.getenv("OLLAMA_MODEL_LLAMA3", "llama3:8b")),
     "ollama_phi35": OllamaAI(os.getenv("OLLAMA_MODEL_PHI35", "phi3.5")),
+    "openai_gpt4o_mini": OpenAIAI("gpt-4o-mini"),
 }
 
 BOTS = {

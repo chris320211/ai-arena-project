@@ -22,7 +22,16 @@ export type PlayerConfig = {
 
 const AI_MODELS: AIModel[] = [
   {
-    id: 'llama3:8b',
+    id: 'openai_gpt4o_mini',
+    name: 'GPT-4o Mini',
+    description: 'OpenAI\'s efficient and capable chess AI',
+    strength: 2100,
+    style: 'Analytical & Precise',
+    icon: <Brain className="w-5 h-5" />,
+    color: 'from-emerald-500 to-teal-600'
+  },
+  {
+    id: 'ollama_llama3',
     name: 'Llama 3 (8B)',
     description: 'Balanced reasoning and efficient general knowledge',
     strength: 1150,
@@ -31,7 +40,7 @@ const AI_MODELS: AIModel[] = [
     color: 'from-green-500 to-emerald-600'
   },
   {
-    id: 'phi3.5',
+    id: 'ollama_phi35',
     name: 'Phi 3.5',
     description: 'Lightweight but precise with strong math ability',
     strength: 1200,
@@ -40,20 +49,11 @@ const AI_MODELS: AIModel[] = [
     color: 'from-blue-500 to-cyan-600'
   },
   {
-    id: 'gemini',
-    name: 'Gemini Pro',
-    description: 'Creative and adaptive gameplay',
-    strength: 2300,
-    style: 'Dynamic',
-    icon: <Zap className="w-5 h-5" />,
-    color: 'from-purple-500 to-violet-600'
-  },
-  {
-    id: 'custom',
-    name: 'Custom AI',
-    description: 'Your own trained model',
-    strength: 2200,
-    style: 'Experimental',
+    id: 'random',
+    name: 'Random AI',
+    description: 'Makes random legal moves for testing',
+    strength: 800,
+    style: 'Unpredictable',
     icon: <Cpu className="w-5 h-5" />,
     color: 'from-orange-500 to-red-600'
   }
