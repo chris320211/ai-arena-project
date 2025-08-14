@@ -138,69 +138,102 @@ const Index = () => {
     return getCurrentPlayer() !== 'human';
   };
 
-  // Mock API call for AI move (replace with your backend)
-  const requestAIMove = useCallback(async (position: ChessPiece[], model: AIModel) => {
+  // Trigger AI move using backend
+  const triggerAIMove = useCallback(async () => {
+    if (!gameInProgress || !isAITurn() || isAIThinking) return;
+
     setIsAIThinking(true);
     setThinkingSteps([]);
     
-    // Simulate thinking steps
-    const steps: ThinkingStep[] = [
-      {
-        id: '1',
-        type: 'evaluation',
-        content: 'Analyzing current position structure and piece activity',
-        timestamp: Date.now()
-      },
-      {
-        id: '2',
-        type: 'candidate_move',
-        content: 'Considering e2-e4 for central control',
-        move: 'e2-e4',
-        confidence: 85,
-        timestamp: Date.now() + 500
-      },
-      {
-        id: '3',
-        type: 'analysis',
-        content: 'Evaluating tactical opportunities and threats',
-        timestamp: Date.now() + 1000
-      },
-      {
-        id: '4',
-        type: 'decision',
-        content: 'Selected best move based on positional advantages',
-        move: 'e2-e4',
-        confidence: 92,
-        timestamp: Date.now() + 1500
+    // Add thinking step
+    setThinkingSteps([{
+      id: '1',
+      type: 'evaluation',
+      content: 'AI is analyzing the position...',
+      timestamp: Date.now()
+    }]);
+
+    try {
+      const response = await fetch('http://localhost:8001/ai-step', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('AI move failed');
       }
-    ];
 
-    // Simulate streaming thinking steps
-    for (let i = 0; i < steps.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setThinkingSteps(prev => [...prev, steps[i]]);
+      const data = await response.json();
+      
+      // Update board state
+      const frontendPosition = convertBackendToFrontend(data.board);
+      setPosition(frontendPosition);
+      setCurrentTurn(data.turn);
+      
+      if (data.last_move) {
+        setLastMove({ 
+          from: data.last_move.from, 
+          to: data.last_move.to, 
+          piece: frontendPosition.find(p => p.position === data.last_move.to)!
+        });
+      }
+
+      // Update thinking steps with result
+      setThinkingSteps(prev => [...prev, {
+        id: '2',
+        type: 'decision',
+        content: `AI played ${data.last_move?.from} to ${data.last_move?.to}`,
+        move: `${data.last_move?.from}-${data.last_move?.to}`,
+        confidence: 85,
+        timestamp: Date.now()
+      }]);
+
+      // Check game status
+      if (data.status?.checkmate) {
+        toast({
+          title: "Checkmate!",
+          description: `${data.turn === 'white' ? 'Black' : 'White'} wins!`,
+          variant: "default"
+        });
+        setGameInProgress(false);
+      } else if (data.status?.check) {
+        toast({
+          title: "Check!",
+          description: `${data.turn} is in check`,
+          variant: "default"
+        });
+      } else if (data.status?.stalemate) {
+        toast({
+          title: "Stalemate!",
+          description: "The game is a draw",
+          variant: "default"
+        });
+        setGameInProgress(false);
+      }
+
+    } catch (error) {
+      console.error('Error triggering AI move:', error);
+      toast({
+        title: "AI Error",
+        description: "Failed to get AI move",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAIThinking(false);
     }
+  }, [gameInProgress, isAIThinking, convertBackendToFrontend]);
 
-    // Mock AI response
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockResponse: AIResponse = {
-      modelId: model.id,
-      bestMove: 'e2-e4',
-      confidence: 92,
-      thinkingTime: 2300,
-      evaluation: 15,
-      principalVariation: ['e2-e4', 'e7-e5', 'Ng1-f3', 'Nb8-c6'],
-      reasoning: 'Controlling the center with the king\'s pawn provides excellent piece development opportunities.',
-      thinkingSteps: steps
-    };
-
-    setAIResponse(mockResponse);
-    setIsAIThinking(false);
-    
-    // Make the move
-    handleMove({ from: 'e2', to: 'e4', piece: position.find(p => p.position === 'e2')! });
-  }, []);
+  // Auto-trigger AI moves
+  useEffect(() => {
+    if (gameInProgress && isAITurn() && !isAIThinking) {
+      const timer = setTimeout(() => {
+        triggerAIMove();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [gameInProgress, currentTurn, isAIThinking, triggerAIMove]);
 
   const getValidMoves = useCallback(async (square: string) => {
     try {
@@ -292,21 +325,31 @@ const Index = () => {
     });
   }, [position, currentTurn]);
 
-  // Check if AI should move
-  useState(() => {
-    if (gameInProgress && isAITurn() && !isAIThinking) {
-      const currentPlayer = getCurrentPlayer();
-      if (currentPlayer !== 'human' && typeof currentPlayer === 'object') {
-        requestAIMove(position, currentPlayer);
-      }
-    }
-  });
 
   const startNewGame = async () => {
     try {
       const response = await fetch('http://localhost:8001/new', { method: 'POST' });
       if (!response.ok) {
         throw new Error('Failed to start new game');
+      }
+
+      // Configure bots based on player config
+      const whiteBot = playerConfig.white === 'human' ? 'human' : playerConfig.white.id;
+      const blackBot = playerConfig.black === 'human' ? 'human' : playerConfig.black.id;
+      
+      const botResponse = await fetch('http://localhost:8001/set-bots', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          white: whiteBot,
+          black: blackBot
+        })
+      });
+
+      if (!botResponse.ok) {
+        throw new Error('Failed to configure bots');
       }
       
       await fetchGameState();
@@ -322,6 +365,7 @@ const Index = () => {
         description: "Good luck!",
         variant: "default"
       });
+
     } catch (error) {
       console.error('Error starting new game:', error);
       toast({
