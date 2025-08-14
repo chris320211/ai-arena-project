@@ -15,10 +15,36 @@ castling_rights = {
     'black': {'K': True, 'Q': True}
 }
 
+FILES = ["a","b","c","d","e","f","g","h"]
+RANKS = ["1","2","3","4","5","6","7","8"]
+
+def xy_to_alg(x, y):
+    file_ = FILES[y]
+    rank_ = RANKS[7 - x]
+    return f"{file_}{rank_}"
+
+def alg_to_xy(sq):
+    s = sq.strip().lower()
+    f = s[0]
+    r = s[1]
+    y = FILES.index(f)
+    x = 7 - RANKS.index(r)
+    return x, y
+
 def print_board(board):
     for row in board:
         print(' '.join(row))
     print() 
+
+def move_piece_alg(board, from_sq, to_sq, simulate=False):
+    fx, fy = alg_to_xy(from_sq)
+    tx, ty = alg_to_xy(to_sq)
+    move_piece(board, fx, fy, tx, ty, simulate=simulate)
+
+def get_piece_moves_alg(board, from_sq):
+    x, y = alg_to_xy(from_sq)
+    raw = get_piece_moves(board, x, y)
+    return [xy_to_alg(tx, ty) for tx, ty in raw]
 
 def _update_castling_rights_on_capture(to_x, to_y, captured_piece):
     if captured_piece == 'R':
@@ -399,9 +425,9 @@ if __name__ == "__main__":
         print(f"\n{turn.capitalize()}'s turn")
 
         try:
-            x = int(input("Enter piece row (0-7): "))
-            y = int(input("Enter piece column (0-7): "))
-            piece = board[x][y]
+            from_sq = input("From square (e.g., e2): ").strip()
+            fx, fy = alg_to_xy(from_sq)
+            piece = board[fx][fy]
 
             if piece == '.':
                 print("No piece at that position.")
@@ -413,22 +439,23 @@ if __name__ == "__main__":
                 print("That's a white piece. It's black's turn.")
                 continue
 
-            moves = get_piece_moves(board, x, y)
-            if not moves:
+            moves_xy = get_piece_moves(board, fx, fy)
+            moves_alg = [xy_to_alg(tx, ty) for tx, ty in moves_xy]
+            if not moves_alg:
                 print("No valid moves for that piece.")
                 continue
 
-            print("Valid moves:", moves)
+            print("Valid moves:", moves_alg)
 
-            to_x = int(input("Enter destination row: "))
-            to_y = int(input("Enter destination column: "))
+            to_sq = input("To square (e.g., e4): ").strip()
 
-            if (to_x, to_y) not in moves:
+            if to_sq not in moves_alg:
                 print("Invalid move.")
                 continue
 
-            move_piece(board, x, y, to_x, to_y)
-            handle_pawn_promotion(board, to_x, to_y)
+            move_piece_alg(board, from_sq, to_sq)
+            fx2, fy2 = alg_to_xy(to_sq)
+            handle_pawn_promotion(board, fx2, fy2)
 
             if is_checkmate(board, turn):
                 print_board(board)
