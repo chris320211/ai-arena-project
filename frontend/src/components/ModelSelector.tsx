@@ -187,7 +187,7 @@ const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress }: ModelSe
                 </div>
                 <div className="text-xs opacity-75 mb-1">{model.description}</div>
                 <div className="text-xs">
-                  <span className="text-accent font-medium">{model.style}</span> style
+                  <span className="text-accent font-medium">{model.style}</span> Style
                 </div>
               </div>
             </Button>
