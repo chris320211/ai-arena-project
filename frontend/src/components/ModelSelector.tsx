@@ -75,6 +75,12 @@ const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress }: ModelSe
     });
   };
 
+  const isModelAlreadySelected = (model: AIModel): boolean => {
+    const oppositeSide = selectedSide === 'white' ? 'black' : 'white';
+    const oppositePlayer = playerConfig[oppositeSide];
+    return oppositePlayer !== 'human' && oppositePlayer.id === model.id;
+  };
+
   const getPlayerDisplay = (player: 'human' | AIModel) => {
     if (player === 'human') {
       return {
@@ -164,13 +170,21 @@ const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress }: ModelSe
           </Button>
 
           {/* AI Model Options */}
-          {AI_MODELS.map(model => (
+          {AI_MODELS.map(model => {
+            const isSelected = playerConfig[selectedSide] === model;
+            const isAlreadySelected = isModelAlreadySelected(model);
+            const isDisabled = gameInProgress || isAlreadySelected;
+            
+            return (
             <Button
               key={model.id}
-              variant={playerConfig[selectedSide] === model ? 'default' : 'outline'}
+              variant={isSelected ? 'default' : 'outline'}
               onClick={() => handlePlayerSelect(model)}
-              disabled={gameInProgress}
-              className="w-full justify-start p-4 h-auto"
+              disabled={isDisabled}
+              className={cn(
+                "w-full justify-start p-4 h-auto",
+                isAlreadySelected && !isSelected && "opacity-50 cursor-not-allowed"
+              )}
             >
               <div className={cn(
                 "p-2 rounded-lg bg-gradient-to-r mr-3",
@@ -191,7 +205,8 @@ const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress }: ModelSe
                 </div>
               </div>
             </Button>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>
