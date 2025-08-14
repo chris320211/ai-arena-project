@@ -7,6 +7,8 @@ from typing import Optional, List, Tuple
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from starlette.middleware.base import BaseHTTPMiddleware
+from contextlib import asynccontextmanager
+from datetime import datetime
 
 import os
 import requests
@@ -18,6 +20,13 @@ from openai import OpenAI
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Import database functions
+from .database import (
+    connect_to_mongo, close_mongo_connection, save_game_result,
+    get_recent_games, get_all_model_stats, update_model_stats,
+    update_elo_ratings, GameResult
+)
 
 from .chess_logic import (
     create_board, print_board, get_piece_moves, move_piece,
@@ -180,7 +189,16 @@ BOTS = {
     "black": None,
 }
 
-app = FastAPI()
+# Database lifecycle management
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await connect_to_mongo()
+    yield
+    # Shutdown
+    await close_mongo_connection()
+
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -203,6 +221,9 @@ STATE = {
     "board": create_board(),
     "turn": "white",
     "last_move": None,  # {"from":"e2","to":"e4"}
+    "game_start_time": None,
+    "move_count": 0,
+    "game_active": False,
 }
 
 class Square(BaseModel):
@@ -262,6 +283,9 @@ def new_game():
     STATE["board"] = create_board()
     STATE["turn"] = "white"
     STATE["last_move"] = None
+    STATE["game_start_time"] = datetime.utcnow()
+    STATE["move_count"] = 0
+    STATE["game_active"] = True
     return {"board": STATE["board"], "turn": STATE["turn"], "last_move": STATE["last_move"]}
 
 @app.post("/reset")
@@ -269,7 +293,56 @@ def reset_game():
     STATE["board"] = create_board()
     STATE["turn"] = "white"
     STATE["last_move"] = None
+    STATE["game_start_time"] = None
+    STATE["move_count"] = 0
+    STATE["game_active"] = False
     return {"board": STATE["board"], "turn": STATE["turn"], "last_move": STATE["last_move"]}
+
+async def save_completed_game(winner: Optional[str], end_reason: str):
+    """Save a completed game to the database"""
+    if not STATE["game_active"] or not STATE["game_start_time"]:
+        return
+    
+    duration = int((datetime.utcnow() - STATE["game_start_time"]).total_seconds())
+    white_model = BOTS["white"] or "human"
+    black_model = BOTS["black"] or "human"
+    
+    # Create game result
+    game_result = GameResult(
+        white_model=white_model,
+        black_model=black_model,
+        winner=winner,
+        end_reason=end_reason,
+        moves=STATE["move_count"],
+        duration=duration
+    )
+    
+    try:
+        # Save game result
+        await save_game_result(game_result)
+        
+        # Update model stats if both players are AI
+        if white_model != "human" and black_model != "human":
+            white_won = winner == "white"
+            black_won = winner == "black"
+            draw = winner is None
+            
+            await update_model_stats(white_model, white_won, draw, STATE["move_count"], duration)
+            await update_model_stats(black_model, black_won, draw, STATE["move_count"], duration)
+            
+            # Update ELO ratings
+            await update_elo_ratings(white_model, black_model, winner)
+        elif white_model != "human":
+            # Update stats for white AI vs human
+            await update_model_stats(white_model, winner == "white", winner is None, STATE["move_count"], duration)
+        elif black_model != "human":
+            # Update stats for black AI vs human
+            await update_model_stats(black_model, winner == "black", winner is None, STATE["move_count"], duration)
+            
+    except Exception as e:
+        print(f"Error saving game result: {e}")
+    finally:
+        STATE["game_active"] = False
 
 @app.get("/moves")
 def get_moves(x: int, y: int):
@@ -318,7 +391,7 @@ def ai_legal_moves():
     return {"turn": turn, "legal_moves": _legal_moves_alg(board, turn)}
 
 @app.post("/move")
-def make_move(payload: MovePayload):
+async def make_move(payload: MovePayload):
     board = STATE["board"]
     turn = STATE["turn"]
 
