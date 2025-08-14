@@ -461,7 +461,7 @@ class BotMove(BaseModel):
     promotion: Optional[str] = None
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 @app.post("/ai/submit")
 async def ai_submit(payload: BotMove):

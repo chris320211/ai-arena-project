@@ -539,16 +539,6 @@ const Index = () => {
     }
   }, []);
 
-  // Initialize game state on component mount
-  useEffect(() => {
-    fetchGameState();
-  }, [fetchGameState]);
-
-  const getCurrentAIModel = (): AIModel | null => {
-    const currentPlayer = getCurrentPlayer();
-    return currentPlayer !== 'human' && typeof currentPlayer === 'object' ? currentPlayer : null;
-  };
-
   // Fetch statistics from API
   const fetchStatistics = useCallback(async () => {
     try {
@@ -569,6 +559,28 @@ const Index = () => {
       console.error('Error fetching statistics:', error);
     }
   }, []);
+
+  // Initialize game state on component mount
+  useEffect(() => {
+    fetchGameState();
+    fetchStatistics();
+  }, [fetchGameState, fetchStatistics]);
+
+  // Refresh statistics when games complete
+  useEffect(() => {
+    if (!gameInProgress) {
+      // Delay to allow backend to save game results
+      const timeoutId = setTimeout(() => {
+        fetchStatistics();
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [gameInProgress, fetchStatistics]);
+
+  const getCurrentAIModel = (): AIModel | null => {
+    const currentPlayer = getCurrentPlayer();
+    return currentPlayer !== 'human' && typeof currentPlayer === 'object' ? currentPlayer : null;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
