@@ -181,6 +181,7 @@ const Index = () => {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        console.log('AI API response not ok:', response.status, response.statusText, response);
         throw new Error('AI move failed');
       }
 

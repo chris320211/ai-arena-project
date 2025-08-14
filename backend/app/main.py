@@ -478,12 +478,15 @@ def ai_step():
     try:
         mv = engine.choose(board, turn)
     except Exception as e:
+        print(f"Engine error for {bot_name}: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(500, f"{bot_name} engine error: {e}")
     pool = _collect_legal_moves_for_side(board, turn)
     if not pool:
         raise HTTPException(400, "Bot cannot make a move (no legal moves)")
     if mv not in pool:
-       
+        print(f"Warning: {bot_name} returned invalid move, using fallback")
         mv = pool[0]
     _apply_move_tuple(board, mv)
     tx, ty = mv[2], mv[3]
