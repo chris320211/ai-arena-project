@@ -81,6 +81,18 @@ def _valid_xy(x: int, y: int) -> bool:
 def get_state():
     return {"board": STATE["board"], "turn": STATE["turn"]}
 
+@app.post("/new")
+def new_game():
+    STATE["board"] = create_board()
+    STATE["turn"] = "white"
+    return {"board": STATE["board"], "turn": STATE["turn"]}
+
+@app.post("/reset")
+def reset_game():
+    STATE["board"] = create_board()
+    STATE["turn"] = "white"
+    return {"board": STATE["board"], "turn": STATE["turn"]}
+
 @app.get("/moves")
 def get_moves(x: int, y: int):
     board = STATE["board"]

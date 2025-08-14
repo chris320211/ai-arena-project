@@ -46,6 +46,31 @@
     const API = ""; 
     const boardDiv = document.getElementById("board");
     const statusDiv = document.getElementById("status");
+    const newGameBtn = document.getElementById("newGameBtn");
+    if (newGameBtn) {
+      newGameBtn.addEventListener("click", newGame);
+    }
+    async function newGame() {
+      try {
+        let ok = false;
+        try {
+          const r = await fetch(`${API}/new`, { method: "POST" });
+          ok = r.ok;
+        } catch (e) {}
+        if (!ok) {
+          try {
+            const r2 = await fetch(`${API}/reset`, { method: "POST" });
+            ok = r2.ok;
+          } catch (e) {}
+        }
+        await fetchState();
+        statusDiv.textContent = "New game started.";
+        selected = null;
+        legalMoves = [];
+      } catch (err) {
+        statusDiv.textContent = "Failed to start a new game.";
+      }
+    }
 
     let state = { board: [], turn: "white" };
     let selected = null;          
