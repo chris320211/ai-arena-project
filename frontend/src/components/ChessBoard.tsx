@@ -88,7 +88,6 @@ const ChessBoard = ({
       <div className={cn(
         "grid grid-cols-8 gap-0 border-4 border-primary rounded-lg overflow-hidden shadow-2xl",
         "bg-gradient-to-br from-card to-muted transition-all duration-500",
-        isThinking && "opacity-75 pointer-events-none",
         !gameInProgress && "blur-sm opacity-60 pointer-events-none"
       )}>
         {ranks.map(rank =>
@@ -149,13 +148,6 @@ const ChessBoard = ({
         ))}
       </div>
       
-      {isThinking && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
-          <div className="bg-card/90 backdrop-blur-sm px-4 py-2 rounded-full border border-primary">
-            <span className="text-primary font-medium">AI is thinking...</span>
-          </div>
-        </div>
-      )}
       
       {!gameInProgress && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
