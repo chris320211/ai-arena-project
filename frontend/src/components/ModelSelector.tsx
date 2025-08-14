@@ -22,20 +22,20 @@ export type PlayerConfig = {
 
 const AI_MODELS: AIModel[] = [
   {
-    id: 'gpt4',
-    name: 'GPT-4',
-    description: 'Advanced reasoning and strategic planning',
-    strength: 2400,
-    style: 'Positional',
+    id: 'llama3:8b',
+    name: 'Llama 3 (8B)',
+    description: 'Balanced reasoning and efficient general knowledge',
+    strength: 1150,
+    style: 'Strategic & Versatile',
     icon: <Brain className="w-5 h-5" />,
     color: 'from-green-500 to-emerald-600'
   },
   {
-    id: 'claude',
-    name: 'Claude 3.5',
-    description: 'Analytical and precise decision making',
-    strength: 2350,
-    style: 'Tactical',
+    id: 'phi3.5',
+    name: 'Phi 3.5',
+    description: 'Lightweight but precise with strong math ability',
+    strength: 1200,
+    style: 'Compact & Tactical',
     icon: <Target className="w-5 h-5" />,
     color: 'from-blue-500 to-cyan-600'
   },

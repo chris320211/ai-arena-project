@@ -48,7 +48,7 @@ cd frontend && npm install && npm run dev
 ```
 
 **Access your AI arena:**
-- 🎯 **Battle Interface:** http://localhost:5173
+- 🎯 **Battle Interface:** http://localhost:8080/
 - 🧠 **AI Command Center:** http://localhost:8001/docs  
 
 **Power down:**
