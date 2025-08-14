@@ -7,21 +7,8 @@ from pydantic import BaseModel, Field
 from bson import ObjectId
 
 
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_pydantic_core_schema__(cls, source_type, handler):
-        from pydantic_core import core_schema
-        return core_schema.str_schema()
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid objectid")
-        return str(v)
-
-
 class GameResult(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: Optional[str] = Field(None, alias="_id")
     white_model: str
     black_model: str
     winner: Optional[str] = None  # 'white', 'black', or None for draw
@@ -31,14 +18,11 @@ class GameResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     pgn: Optional[str] = None  # Complete game notation
 
-    class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+    model_config = {"populate_by_name": True}
 
 
 class ModelStats(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: Optional[str] = Field(None, alias="_id")
     model_id: str
     games_played: int = 0
     wins: int = 0
@@ -49,10 +33,7 @@ class ModelStats(BaseModel):
     rating: int = 1200  # Starting ELO rating
     last_updated: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+    model_config = {"populate_by_name": True}
 
 
 class Database:
@@ -100,6 +81,9 @@ async def get_recent_games(limit: int = 10) -> List[GameResult]:
     cursor = db.game_results.find().sort("timestamp", -1).limit(limit)
     games = []
     async for doc in cursor:
+        # Convert ObjectId to string for Pydantic
+        if "_id" in doc:
+            doc["_id"] = str(doc["_id"])
         games.append(GameResult(**doc))
     return games
 
@@ -109,6 +93,9 @@ async def get_model_stats(model_id: str) -> Optional[ModelStats]:
     db = await get_database()
     doc = await db.model_stats.find_one({"model_id": model_id})
     if doc:
+        # Convert ObjectId to string for Pydantic
+        if "_id" in doc:
+            doc["_id"] = str(doc["_id"])
         return ModelStats(**doc)
     return None
 
@@ -163,6 +150,9 @@ async def get_all_model_stats() -> List[ModelStats]:
     cursor = db.model_stats.find().sort("rating", -1)
     stats = []
     async for doc in cursor:
+        # Convert ObjectId to string for Pydantic
+        if "_id" in doc:
+            doc["_id"] = str(doc["_id"])
         stats.append(ModelStats(**doc))
     return stats
 
