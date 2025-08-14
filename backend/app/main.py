@@ -10,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 import os
 import requests
+import time
 from dotenv import load_dotenv
 
 # Add OpenAI import
@@ -475,6 +476,11 @@ def ai_step():
     engine = ENGINES.get(bot_name)
     if not engine:
         raise HTTPException(500, f"Bot engine not found: {bot_name}")
+    # Add delay for OpenAI models to respect rate limits
+    if bot_name == "openai_gpt4o_mini":
+        print(f"Adding 10 second delay for {bot_name} to respect rate limits")
+        time.sleep(10)
+    
     try:
         mv = engine.choose(board, turn)
     except Exception as e:

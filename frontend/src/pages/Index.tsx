@@ -166,9 +166,9 @@ const Index = () => {
 
     console.log('Making API call to /ai-step');
     try {
-      // Add 30 second timeout to prevent hanging
+      // Add 45 second timeout to prevent hanging (accounting for 10s delay + API time)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
       
       const response = await fetch('http://localhost:8001/ai-step', {
         method: 'POST',
