@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, User, Zap, Target, Cpu } from 'lucide-react';
+import { Brain, User, Target, Cpu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type AIModel = {

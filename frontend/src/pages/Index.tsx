@@ -223,7 +223,7 @@ const Index = () => {
     } finally {
       setIsAIThinking(false);
     }
-  }, [gameInProgress, isAIThinking, convertBackendToFrontend]);
+  }, [gameInProgress, isAIThinking]);
 
   // Auto-trigger AI moves
   useEffect(() => {
