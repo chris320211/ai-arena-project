@@ -6,8 +6,8 @@
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
-  padding-left: clamp(0px, calc(25vw - 284px), 25vw);
-  padding-right: 0;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 :root {
   --bg: #0f1222;
@@ -54,7 +54,6 @@ html, body {
   padding: 14px 20px;
   background: linear-gradient(180deg, #1b1f34 0%, #14172a 100%);
   border: 1px solid #232844;
-  border-radius: var(--radius);
   box-shadow: var(--shadow);
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
@@ -98,15 +97,16 @@ button:focus { outline: var(--ring) solid rgba(110,168,254,.45); outline-offset:
   border: 1px solid #232844;
   border-radius: 22px;
   box-shadow: var(--shadow);
-  padding: 14px;
+  padding: 18px;
   min-height: calc(8 * var(--square) + 2px);
   max-width: none;
 }
 .side-panel h2 {
-  margin: 0 0 10px 0;
+  margin: 0 0 12px 0;
   font-size: 16px;
   color: var(--muted);
   letter-spacing: .3px;
+  text-align: center;
 }
 .side-section {
   margin-bottom: 12px;
@@ -122,6 +122,22 @@ button:focus { outline: var(--ring) solid rgba(110,168,254,.45); outline-offset:
   width: 100%;
   min-width: 280px;
   justify-self: stretch;
+  padding-right: 0;
+}
+
+.right-panel {
+  padding: 18px; /* a bit more inner gap so content doesn't hug the border */
+}
+.right-panel h2 {
+  margin-top: 0;
+  margin-bottom: 12px; /* space between title and boxes */
+  text-align: center;
+}
+.right-panel .side-section {
+  max-width: 100%;          /* keep boxes slightly inset from panel edges */
+  margin: 10px auto;       /* center horizontally with a small vertical gap */
+  padding: 12px 14px;      /* a touch more breathing room inside each box */
+  border-radius: 12px;     /* soften edges a bit for contrast */
 }
 
 .board {
