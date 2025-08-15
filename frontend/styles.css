@@ -126,18 +126,18 @@ button:focus { outline: var(--ring) solid rgba(110,168,254,.45); outline-offset:
 }
 
 .right-panel {
-  padding: 18px; /* a bit more inner gap so content doesn't hug the border */
+  padding: 18px;
 }
 .right-panel h2 {
   margin-top: 0;
-  margin-bottom: 12px; /* space between title and boxes */
+  margin-bottom: 12px;
   text-align: center;
 }
 .right-panel .side-section {
-  max-width: 100%;          /* keep boxes slightly inset from panel edges */
-  margin: 10px auto;       /* center horizontally with a small vertical gap */
-  padding: 12px 14px;      /* a touch more breathing room inside each box */
-  border-radius: 12px;     /* soften edges a bit for contrast */
+  max-width: 100%;
+  margin: 10px auto;
+  padding: 12px 14px;
+  border-radius: 12px;
 }
 
 .board {
