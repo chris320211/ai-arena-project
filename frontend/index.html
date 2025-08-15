@@ -6,19 +6,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chess</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; }
-    .board { display: grid; grid-template-columns: repeat(8, 64px); grid-template-rows: repeat(8, 64px); border: 2px solid #333; }
-    .square { width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; font-size: 40px; user-select: none; cursor: pointer; }
-    .light { background: #f0d9b5; }
-    .dark  { background: #b58863; }
-    .highlight { outline: 3px solid #4caf50; }
-    .selected  { outline: 3px solid #2196f3; }
-    #turn { margin: 8px 0; font-weight: 600; }
-    #status { margin-top: 10px; min-height: 1.2em; }
-    .top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-    button { padding: 6px 10px; border: 1px solid #333; background: #fff; cursor: pointer; }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="top">
@@ -26,8 +14,28 @@
     <div id="turn"></div>
     <button id="resetBtn" title="Reset to starting position">Reset</button>
   </div>
-  <div id="board" class="board" aria-label="Chessboard"></div>
-  <div id="status"></div>
+
+  <div class="page">
+    <div class="board-wrap">
+      <aside class="side-panel">
+        <h2>AI Bots</h2>
+        <div class="side-section" id="moveList">Moves will appear here</div>
+        <div class="side-section">
+          <button id="newGameBtn" type="button">New Game</button>
+        </div>
+      </aside>
+
+      <div id="board" class="board" aria-label="Chessboard"></div>
+
+      <aside class="side-panel right-panel">
+        <h2>Game Moves</h2>
+        <div class="side-section" id="gameStatus">Status here</div>
+        <div class="side-section" id="captured">Captured pieces</div>
+      </aside>
+    </div>
+
+    <div id="status"></div>
+  </div>
 
   <script>
     const API = ""; 
