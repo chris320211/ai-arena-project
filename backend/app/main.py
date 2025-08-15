@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Tuple
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .chess_logic import (
     create_board, print_board, get_piece_moves, move_piece,
@@ -48,6 +49,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class NoCacheStaticMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        path = request.url.path.lower()
+        if path.endswith((".css", ".js", ".svg", ".png", ".jpg", ".jpeg")):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
+app.add_middleware(NoCacheStaticMiddleware)
 
 STATE = {
     "board": create_board(),

@@ -49,7 +49,7 @@
     let legalMoves = [];          
 
     const PIECE = {
-      "P":"\u2659","R":"\u2656","N":"\u2658","B":"\u2657","Q":"\u2655","K":"\u2654",
+      "P":"\u265F","R":"\u265C","N":"\u265E","B":"\u265D","Q":"\u265B","K":"\u265A",
       "p":"\u265F","r":"\u265C","n":"\u265E","b":"\u265D","q":"\u265B","k":"\u265A",".":""
     };
 
@@ -74,7 +74,15 @@
           const sq = document.createElement("div");
           sq.id = sqId(x,y);
           sq.className = `square ${(x + y) % 2 === 0 ? "light" : "dark"}`;
-          sq.textContent = PIECE[state.board[x][y]];
+          const symbol = PIECE[state.board[x][y]];
+          sq.textContent = "";
+          if (symbol) {
+            const isWhite = state.board[x][y] === state.board[x][y].toUpperCase();
+            const pieceEl = document.createElement("span");
+            pieceEl.className = `piece ${isWhite ? "white" : "black"}`;
+            pieceEl.textContent = symbol;
+            sq.appendChild(pieceEl);
+          }
           sq.addEventListener("click", () => onSquareClick(x,y));
           boardDiv.appendChild(sq);
         }

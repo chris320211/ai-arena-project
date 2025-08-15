@@ -167,8 +167,8 @@ button:focus { outline: var(--ring) solid rgba(110,168,254,.45); outline-offset:
   transition: transform .05s ease, box-shadow .1s ease, background-color .15s ease;
 }
 
-.light { background: linear-gradient(180deg, var(--light) 0%, #d9e0e8 100%); }
-.dark  { background: linear-gradient(180deg, #74849a 0%, var(--dark) 100%); }
+.light { background: #e6d8ad; }
+.dark  { background: #7b4a2b; }
 
 .square:hover { box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
 .selected { outline: var(--ring) solid rgba(110,168,254,.75); outline-offset: -3px; }
@@ -208,6 +208,47 @@ button:focus { outline: var(--ring) solid rgba(110,168,254,.45); outline-offset:
 .status-check     { color: var(--warn); }
 .status-checkmate { color: var(--danger); }
 .status-stalemate { color: var(--success); }
+
+.square .piece {
+  line-height: 1;
+  opacity: 1 !important;
+}
+
+.square .piece.white {
+  color: #ffffff;
+  text-shadow:
+    0 1px 0 rgba(0,0,0,.8),
+    1px 0 0 rgba(0,0,0,.8),
+    -1px 0 0 rgba(0,0,0,.8),
+    0 -1px 0 rgba(0,0,0,.8);
+  -webkit-text-stroke: 0.8px rgba(0,0,0,.9);
+}
+
+.square .piece.black {
+  color: #0f223a;
+}
+
+.square .piece.white svg *,
+.square[data-color="w"] svg *,
+.square[data-side="w"] svg * {
+  fill: #ffffff !important;
+  stroke: rgba(0,0,0,.85) !important;
+  stroke-width: 1.25px !important;
+  paint-order: stroke fill;
+  vector-effect: non-scaling-stroke;
+}
+.square .piece.black svg *,
+.square[data-color="b"] svg *,
+.square[data-side="b"] svg * {
+  fill: #0f223a !important;
+  paint-order: stroke fill;
+  vector-effect: non-scaling-stroke;
+}
+
+.square .piece.white img { filter: brightness(1.35) contrast(1.05) drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000) drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000) drop-shadow(1px 1px 0 #000) drop-shadow(-1px 1px 0 #000) drop-shadow(1px -1px 0 #000) drop-shadow(-1px -1px 0 #000); }
+.square .piece.black img { filter: brightness(0.65) contrast(1.35); }
+
+.square .piece svg { width: 80%; height: 80%; display: block; }
 
 @media (max-width: 900px) {
   .board-wrap {
