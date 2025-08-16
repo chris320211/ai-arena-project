@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,27 +8,34 @@
 </head>
 <body>
   <div class="top">
-    <h1 style="margin:0">Chess</h1>
-    <div id="turn"></div>
-    <button id="resetBtn" title="Reset to starting position">Reset</button>
+    <div class="top-inner">
+      <h1 style="margin:0">Chess</h1>
+      <nav class="top-links" aria-label="Top navigation">
+        <ul>
+          <li><a href="#statistics">Statistics</a></li>
+          <li><a href="#login">Login</a></li>
+          <li><a href="#settings">Settings</a></li>
+        </ul>
+      </nav>
+    </div>
   </div>
 
   <div class="page">
     <div class="board-wrap">
-      <aside class="side-panel">
+      <aside class="right-panel">
         <h2>AI Bots</h2>
-        <div class="side-section" id="moveList">Moves will appear here</div>
-        <div class="side-section">
+        <div class="right-section" id="moveList">Moves will appear here</div>
+        <div class="right-section">
           <button id="newGameBtn" type="button">New Game</button>
         </div>
       </aside>
 
       <div id="board" class="board" aria-label="Chessboard"></div>
 
-      <aside class="side-panel right-panel">
+      <aside class="right-panel right-panel">
         <h2>Game Moves</h2>
-        <div class="side-section" id="gameStatus">Status here</div>
-        <div class="side-section" id="captured">Captured pieces</div>
+        <div class="right-section" id="gameStatus">Status here</div>
+        <div class="right-section" id="captured">Captured pieces</div>
       </aside>
     </div>
 
@@ -40,9 +45,7 @@
   <script>
     const API = ""; 
     const boardDiv = document.getElementById("board");
-    const turnDiv = document.getElementById("turn");
     const statusDiv = document.getElementById("status");
-    const resetBtn = document.getElementById("resetBtn");
 
     let state = { board: [], turn: "white" };
     let selected = null;          
@@ -57,13 +60,9 @@
       const res = await fetch(`${API}/state`);
       state = await res.json();
       renderBoard();
-      renderTurn();
       statusDiv.textContent = "";
     }
 
-    function renderTurn() {
-      turnDiv.textContent = `${state.turn.charAt(0).toUpperCase() + state.turn.slice(1)} to move`;
-    }
 
     function sqId(x,y){ return `sq-${x}-${y}`; }
 
@@ -140,7 +139,6 @@
         state.turn = data.turn;
         selected = null; legalMoves = [];
         renderBoard();
-        renderTurn();
 
         const s = data.status || {};
         if (s.checkmate) statusDiv.textContent = "Checkmate!";
@@ -163,7 +161,6 @@
       }
     }
 
-    resetBtn.addEventListener("click", fetchState);
     fetchState();
   </script>
 </body>
