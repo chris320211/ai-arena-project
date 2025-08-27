@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -202,7 +202,33 @@ const Index = () => {
     handleMove({ from: 'e2', to: 'e4', piece: position.find(p => p.position === 'e2')! });
   }, []);
 
-  const handleSquareClick = useCallback((square: string) => {
+  const getValidMoves = useCallback(async (square: string) => {
+    try {
+      const file = square[0];
+      const rank = square[1];
+      const x = 8 - parseInt(rank);
+      const y = file.charCodeAt(0) - 'a'.charCodeAt(0);
+      
+      const response = await fetch(`http://localhost:8001/moves?x=${x}&y=${y}`);
+      if (!response.ok) {
+        throw new Error('Failed to get moves');
+      }
+      
+      const data = await response.json();
+      const moves = data.moves.map(([moveX, moveY]: [number, number]) => {
+        const moveFile = String.fromCharCode('a'.charCodeAt(0) + moveY);
+        const moveRank = (8 - moveX).toString();
+        return moveFile + moveRank;
+      });
+      
+      return moves;
+    } catch (error) {
+      console.error('Error getting valid moves:', error);
+      return [];
+    }
+  }, []);
+
+  const handleSquareClick = useCallback(async (square: string) => {
     if (isAIThinking || !gameInProgress) return;
     
     if (isAITurn()) {
@@ -220,21 +246,24 @@ const Index = () => {
       // Selecting a piece
       if (piece && piece.color === currentTurn) {
         setSelectedSquare(square);
-        // In a real app, calculate valid moves here
-        setValidMoves(['e4', 'e3']); // Mock valid moves
+        const moves = await getValidMoves(square);
+        setValidMoves(moves);
       }
     } else {
       // Making a move
       if (validMoves.includes(square)) {
-        const movingPiece = position.find(p => p.position === selectedSquare);
-        if (movingPiece) {
-          handleMove({ from: selectedSquare, to: square, piece: movingPiece, captured: piece });
+        const success = await makeBackendMove(selectedSquare, square);
+        if (success) {
+          const movingPiece = position.find(p => p.position === selectedSquare);
+          if (movingPiece) {
+            setLastMove({ from: selectedSquare, to: square, piece: movingPiece, captured: piece });
+          }
         }
       }
       setSelectedSquare(null);
       setValidMoves([]);
     }
-  }, [selectedSquare, position, currentTurn, validMoves, gameInProgress, isAIThinking]);
+  }, [selectedSquare, position, currentTurn, validMoves, gameInProgress, isAIThinking, getValidMoves]);
 
   const handleMove = useCallback((move: ChessMove) => {
     // Update position
@@ -273,33 +302,183 @@ const Index = () => {
     }
   });
 
-  const startNewGame = () => {
-    setPosition(INITIAL_POSITION);
-    setCurrentTurn('white');
-    setSelectedSquare(null);
-    setValidMoves([]);
-    setLastMove(null);
-    setGameInProgress(true);
-    setAIResponse(null);
-    setThinkingSteps([]);
-    
-    toast({
-      title: "New Game Started",
-      description: "Good luck!",
-      variant: "default"
-    });
+  const startNewGame = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/new', { method: 'POST' });
+      if (!response.ok) {
+        throw new Error('Failed to start new game');
+      }
+      
+      await fetchGameState();
+      setSelectedSquare(null);
+      setValidMoves([]);
+      setLastMove(null);
+      setGameInProgress(true);
+      setAIResponse(null);
+      setThinkingSteps([]);
+      
+      toast({
+        title: "New Game Started",
+        description: "Good luck!",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error starting new game:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start new game",
+        variant: "destructive"
+      });
+    }
   };
 
-  const resetGame = () => {
-    setPosition(INITIAL_POSITION);
-    setCurrentTurn('white');
-    setSelectedSquare(null);
-    setValidMoves([]);
-    setLastMove(null);
-    setGameInProgress(false);
-    setAIResponse(null);
-    setThinkingSteps([]);
+  const resetGame = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/reset', { method: 'POST' });
+      if (!response.ok) {
+        throw new Error('Failed to reset game');
+      }
+      
+      await fetchGameState();
+      setSelectedSquare(null);
+      setValidMoves([]);
+      setLastMove(null);
+      setGameInProgress(false);
+      setAIResponse(null);
+      setThinkingSteps([]);
+    } catch (error) {
+      console.error('Error resetting game:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to reset game",
+        variant: "destructive"
+      });
+    }
   };
+
+  // Convert backend board format to frontend format
+  const convertBackendToFrontend = (backendBoard: string[][]): ChessPiece[] => {
+    const pieces: ChessPiece[] = [];
+    const pieceMap: { [key: string]: 'pawn' | 'rook' | 'knight' | 'bishop' | 'queen' | 'king' } = {
+      'p': 'pawn', 'P': 'pawn',
+      'r': 'rook', 'R': 'rook',
+      'n': 'knight', 'N': 'knight',
+      'b': 'bishop', 'B': 'bishop',
+      'q': 'queen', 'Q': 'queen',
+      'k': 'king', 'K': 'king'
+    };
+
+    for (let x = 0; x < 8; x++) {
+      for (let y = 0; y < 8; y++) {
+        const piece = backendBoard[x][y];
+        if (piece !== '.') {
+          const file = String.fromCharCode('a'.charCodeAt(0) + y);
+          const rank = (8 - x).toString();
+          pieces.push({
+            type: pieceMap[piece],
+            color: piece === piece.toUpperCase() ? 'white' : 'black',
+            position: file + rank,
+            hasMoved: false
+          });
+        }
+      }
+    }
+    return pieces;
+  };
+
+  // Fetch game state from backend
+  const fetchGameState = useCallback(async () => {
+    try {
+      const response = await fetch('http://localhost:8001/state');
+      if (!response.ok) {
+        throw new Error('Failed to fetch game state');
+      }
+      const data = await response.json();
+      const frontendPosition = convertBackendToFrontend(data.board);
+      setPosition(frontendPosition);
+      setCurrentTurn(data.turn);
+    } catch (error) {
+      console.error('Error fetching game state:', error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect to backend. Using offline mode.",
+        variant: "destructive"
+      });
+    }
+  }, []);
+
+  // Make move via backend API
+  const makeBackendMove = useCallback(async (from: string, to: string) => {
+    try {
+      const fromFile = from[0];
+      const fromRank = from[1];
+      const fromX = 8 - parseInt(fromRank);
+      const fromY = fromFile.charCodeAt(0) - 'a'.charCodeAt(0);
+      
+      const toFile = to[0];
+      const toRank = to[1];
+      const toX = 8 - parseInt(toRank);
+      const toY = toFile.charCodeAt(0) - 'a'.charCodeAt(0);
+
+      const response = await fetch('http://localhost:8001/move', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from_sq: { x: fromX, y: fromY },
+          to_sq: { x: toX, y: toY }
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Move failed');
+      }
+
+      const data = await response.json();
+      const frontendPosition = convertBackendToFrontend(data.board);
+      setPosition(frontendPosition);
+      setCurrentTurn(data.turn);
+      
+      if (data.status?.checkmate) {
+        toast({
+          title: "Checkmate!",
+          description: `${data.turn === 'white' ? 'Black' : 'White'} wins!`,
+          variant: "default"
+        });
+        setGameInProgress(false);
+      } else if (data.status?.check) {
+        toast({
+          title: "Check!",
+          description: `${data.turn} is in check`,
+          variant: "default"
+        });
+      } else if (data.status?.stalemate) {
+        toast({
+          title: "Stalemate!",
+          description: "The game is a draw",
+          variant: "default"
+        });
+        setGameInProgress(false);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error making move:', error);
+      toast({
+        title: "Move Error",
+        description: error instanceof Error ? error.message : "Failed to make move",
+        variant: "destructive"
+      });
+      return false;
+    }
+  }, []);
+
+  // Initialize game state on component mount
+  useEffect(() => {
+    fetchGameState();
+  }, [fetchGameState]);
 
   const getCurrentAIModel = (): AIModel | null => {
     const currentPlayer = getCurrentPlayer();
