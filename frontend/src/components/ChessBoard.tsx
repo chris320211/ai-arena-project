@@ -27,15 +27,16 @@ interface ChessBoardProps {
   onSquareClick: (square: string) => void;
   isThinking?: boolean;
   lastMove?: ChessMove;
+  gameInProgress?: boolean;
 }
 
 const PIECE_SYMBOLS = {
   white: {
-    king: '♔',
-    queen: '♕',
-    rook: '♖',
-    bishop: '♗',
-    knight: '♘',
+    king: '♚',
+    queen: '♛',
+    rook: '♜',
+    bishop: '♝',
+    knight: '♞',
     pawn: '♙'
   },
   black: {
@@ -55,7 +56,8 @@ const ChessBoard = ({
   selectedSquare,
   onSquareClick,
   isThinking,
-  lastMove
+  lastMove,
+  gameInProgress = true
 }: ChessBoardProps) => {
   const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
   const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
@@ -77,7 +79,7 @@ const ChessBoard = ({
   };
 
   const handleSquareClick = (square: string) => {
-    if (isThinking) return;
+    if (isThinking || !gameInProgress) return;
     onSquareClick(square);
   };
 
@@ -85,8 +87,9 @@ const ChessBoard = ({
     <div className="relative">
       <div className={cn(
         "grid grid-cols-8 gap-0 border-4 border-primary rounded-lg overflow-hidden shadow-2xl",
-        "bg-gradient-to-br from-card to-muted",
-        isThinking && "opacity-75 pointer-events-none"
+        "bg-gradient-to-br from-card to-muted transition-all duration-500",
+        isThinking && "opacity-75 pointer-events-none",
+        !gameInProgress && "blur-sm opacity-60 pointer-events-none"
       )}>
         {ranks.map(rank =>
           files.map(file => {
@@ -116,7 +119,7 @@ const ChessBoard = ({
                     className={cn(
                       "select-none transition-transform duration-150",
                       isSelected && "scale-110",
-                      piece.color === 'white' ? "text-gray-100 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]" : "text-gray-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.3)]"
+                      piece.color === 'white' ? "text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]" : "text-gray-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.3)]"
                     )}
                   >
                     {PIECE_SYMBOLS[piece.color][piece.type]}
@@ -150,6 +153,15 @@ const ChessBoard = ({
         <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
           <div className="bg-card/90 backdrop-blur-sm px-4 py-2 rounded-full border border-primary">
             <span className="text-primary font-medium">AI is thinking...</span>
+          </div>
+        </div>
+      )}
+      
+      {!gameInProgress && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+          <div className="bg-card/90 backdrop-blur-sm px-6 py-3 rounded-lg border border-primary text-center">
+            <span className="text-primary font-medium text-lg block">Click "Start Game" to begin</span>
+            <span className="text-muted-foreground text-sm">Configure your players and start playing!</span>
           </div>
         </div>
       )}

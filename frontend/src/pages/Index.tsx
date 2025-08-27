@@ -566,6 +566,7 @@ const Index = () => {
                   onSquareClick={handleSquareClick}
                   isThinking={isAIThinking}
                   lastMove={lastMove}
+                  gameInProgress={gameInProgress}
                 />
               </div>
             </div>
