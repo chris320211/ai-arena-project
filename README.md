@@ -44,8 +44,25 @@ Navigate to the backend directory:
 cd ai-arena-project/backend
 ```
 
+#### Option A: Using pip (Global Install)
 Install Python dependencies:
 ```bash
+pip install -r requirements.txt
+```
+
+#### Option B: Using Virtual Environment (Recommended)
+Create and activate a virtual environment:
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -95,6 +112,10 @@ If you want to use AI opponents, install and configure Ollama:
 1. **Start Backend** (Terminal 1):
    ```bash
    cd ai-arena-project/backend
+   # If using venv, activate it first:
+   source venv/bin/activate  # macOS/Linux
+   # venv\Scripts\activate   # Windows
+   
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    ```
 
@@ -117,6 +138,10 @@ If you want to use AI opponents, install and configure Ollama:
 2. **Start Backend** (serves both API and frontend):
    ```bash
    cd ai-arena-project/backend
+   # If using venv, activate it first:
+   source venv/bin/activate  # macOS/Linux
+   # venv\Scripts\activate   # Windows
+   
    uvicorn app.main:app --host 0.0.0.0 --port 8000
    ```
 
