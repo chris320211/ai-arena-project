@@ -29,70 +29,67 @@ ai-arena-project/
 - **Real-time Game State**: Live updates of board state, move validation, and game status
 - **Modern UI**: Built with React, TypeScript, and Tailwind CSS using shadcn/ui components
 
-## Prerequisites
+## 🚀 Launch the Arena
 
-- **Python 3.8+** for the backend
-- **Node.js 18+** for the frontend
-- **Ollama** (optional, for AI opponents)
+**Prerequisites:** 
+1. Install Docker Desktop and Node.js 18+
+2. Start Docker Desktop
 
-## Quick Start
-
-**One-command setup for backend:**
+**Deploy the battlefield:**
 ```bash
-cd ai-arena-project/backend && python setup.py
+# Copy environment template
+cp .env.example .env
+
+# Start backend (Docker)
+docker-compose up --build -d
+
+# Start frontend (Local)
+cd frontend && npm install && npm run dev
 ```
 
-**Then start both services:**
+**Access your AI arena:**
+- 🎯 **Battle Interface:** http://localhost:5173
+- 🧠 **AI Command Center:** http://localhost:8001/docs  
+
+**Power down:**
 ```bash
-# Terminal 1 - Backend
-cd backend
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Terminal 2 - Frontend
-cd frontend
-npm install && npm run dev
+docker-compose down
 ```
-
-**Access the app:** http://localhost:5173
 
 ---
 
-## Manual Setup (if needed)
+## 🤖 AI Opponents Setup
 
-### Backend
+**Cheapest Option (~$0.20 for 1000 games):**
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Get free API key from https://huggingface.co/settings/tokens
+HF_API_KEY=your_huggingface_api_key_here
 ```
 
-### Frontend
+**Premium Options:**
 ```bash
-cd frontend
-npm install
-npm run dev
+# OpenAI (~$0.15 for 1000 games) 
+OPENAI_API_KEY=your_key_here
+
+# Anthropic Claude (~$0.25 for 1000 games)
+ANTHROPIC_API_KEY=your_key_here
 ```
 
-### 3. Ollama Setup (Optional - for AI opponents)
+**That's it!** Just add one API key to `.env` and start playing!
 
-If you want to use AI opponents, install and configure Ollama:
+## ⚔️ Battle Modes
 
-1. Install Ollama from [https://ollama.com](https://ollama.com)
-2. Pull the required models:
-   ```bash
-   ollama pull llama3:8b
-   ollama pull phi3.5
-   ```
-3. Ensure Ollama is running on `http://localhost:11434` (default)
+**Human vs AI:** Challenge the machines
+**AI vs AI:** Watch artificial minds clash
+**Tournament Mode:** Coming soon - Multi-agent competitions
 
-## Running the Application
+## 🏗️ Development Mode
 
-### Development Mode
-
-Follow the **Quick Start** instructions above, or use the manual setup if needed.
+For AI researchers and developers:
+```bash
+# Launch development arena
+docker-compose -f docker-compose.dev.yml up
+```
 
 ### Production Build
 

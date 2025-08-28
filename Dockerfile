@@ -1,9 +1,10 @@
-# Multi-stage build for production optimization
-FROM node:18-alpine AS frontend-builder
+# Multi-stage build for production optimization  
+FROM --platform=linux/amd64 node:18-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm ci --only=production
+RUN rm -rf node_modules package-lock.json
+RUN npm install
 
 COPY frontend/ ./
 RUN npm run build

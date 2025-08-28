@@ -1,55 +1,15 @@
-version: '3.8'
 
 services:
   backend:
     build: .
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - PYTHONPATH=/app
-      - OLLAMA_BASE=http://ollama:11434
     env_file:
       - .env
     volumes:
       - ./backend:/app/backend
-      - ./frontend/dist:/app/frontend/dist
-    depends_on:
-      - ollama
-    networks:
-      - ai-arena-network
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:8000
-    networks:
-      - ai-arena-network
-
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - ai-arena-network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
-volumes:
-  ollama_data:
 
 networks:
   ai-arena-network:
