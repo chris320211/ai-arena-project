@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -8,6 +10,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 import os
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from .chess_logic import (
     create_board, print_board, get_piece_moves, move_piece,

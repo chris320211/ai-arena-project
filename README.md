@@ -35,63 +35,46 @@ ai-arena-project/
 - **Node.js 18+** for the frontend
 - **Ollama** (optional, for AI opponents)
 
-## Setup Instructions
+## Quick Start
 
-### 1. Backend Setup
-
-Navigate to the backend directory:
+**One-command setup for backend:**
 ```bash
-cd ai-arena-project/backend
+cd ai-arena-project/backend && python setup.py
 ```
 
-#### Option A: Using pip (Global Install)
-Install Python dependencies:
+**Then start both services:**
 ```bash
-pip install -r requirements.txt
+# Terminal 1 - Backend
+cd backend
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2 - Frontend
+cd frontend
+npm install && npm run dev
 ```
 
-#### Option B: Using Virtual Environment (Recommended)
-Create and activate a virtual environment:
+**Access the app:** http://localhost:5173
+
+---
+
+## Manual Setup (if needed)
+
+### Backend
 ```bash
-# Create virtual environment
+cd backend
 python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-Start the backend server:
-
-```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The API will be available at `http://localhost:8000`
-
-### 2. Frontend Setup
-
-Navigate to the frontend directory:
+### Frontend
 ```bash
-cd ai-arena-project/frontend
-```
-
-Install Node.js dependencies:
-```bash
+cd frontend
 npm install
-```
-
-Start the development server:
-```bash
 npm run dev
 ```
-
-The frontend will be available at `http://localhost:8080`
 
 ### 3. Ollama Setup (Optional - for AI opponents)
 
@@ -109,39 +92,20 @@ If you want to use AI opponents, install and configure Ollama:
 
 ### Development Mode
 
-1. **Start Backend** (Terminal 1):
-   ```bash
-   cd ai-arena-project/backend
-   # If using venv, activate it first:
-   source venv/bin/activate  # macOS/Linux
-   # venv\Scripts\activate   # Windows
-   
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-2. **Start Frontend** (Terminal 2):
-   ```bash
-   cd ai-arena-project/frontend
-   npm run dev
-   ```
-
-3. **Access Application**: Open `http://localhost:8080` in your browser
+Follow the **Quick Start** instructions above, or use the manual setup if needed.
 
 ### Production Build
 
 1. **Build Frontend**:
    ```bash
-   cd ai-arena-project/frontend
+   cd frontend
    npm run build
    ```
 
 2. **Start Backend** (serves both API and frontend):
    ```bash
-   cd ai-arena-project/backend
-   # If using venv, activate it first:
-   source venv/bin/activate  # macOS/Linux
-   # venv\Scripts\activate   # Windows
-   
+   cd backend
+   source venv/bin/activate  # Windows: venv\Scripts\activate
    uvicorn app.main:app --host 0.0.0.0 --port 8000
    ```
 
@@ -173,10 +137,10 @@ OLLAMA_MODEL_PHI35=phi3.5
 
 ## Troubleshooting
 
-- **Backend not starting**: Ensure Python dependencies are installed and port 8000 is available
-- **Frontend not loading**: Check that Node.js dependencies are installed and port 8080 is available
-- **AI opponents not working**: Verify Ollama is installed, running, and models are downloaded
-- **CORS issues**: The backend is configured to allow all origins for development
+- **Backend not starting**: Run `python setup.py` in the backend directory, then activate venv
+- **Frontend not loading**: Run `npm install` in the frontend directory
+- **AI opponents not working**: Install Ollama and download models (`ollama pull llama3:8b`)
+- **Port conflicts**: Frontend runs on 5173, backend on 8000
 
 ## Technologies Used
 
