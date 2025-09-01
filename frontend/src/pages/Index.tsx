@@ -696,7 +696,7 @@ const Index = () => {
               </TabsContent>
               
               <TabsContent value="stats" className="mt-4">
-                <div className="max-h-[800px] overflow-y-auto">
+                <div className="max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
                   <GameStats
                     modelStats={modelStats}
                     recentGames={gameResults}
