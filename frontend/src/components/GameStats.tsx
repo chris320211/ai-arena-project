@@ -179,12 +179,12 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
 
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="grid w-full grid-cols-5">
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="performance">Performance</TabsTrigger>
-        <TabsTrigger value="trends">ELO Trends</TabsTrigger>
-        <TabsTrigger value="matchups">Matchups</TabsTrigger>
-        <TabsTrigger value="games">Games</TabsTrigger>
+      <TabsList className="grid w-full grid-cols-5 h-auto p-1">
+        <TabsTrigger value="overview" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Overview</TabsTrigger>
+        <TabsTrigger value="performance" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Perf</TabsTrigger>
+        <TabsTrigger value="trends" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">ELO</TabsTrigger>
+        <TabsTrigger value="matchups" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Match</TabsTrigger>
+        <TabsTrigger value="games" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Games</TabsTrigger>
       </TabsList>
       
       <TabsContent value="overview" className="mt-4 space-y-4">
@@ -206,7 +206,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
               <div className="flex flex-col justify-between h-full">
                 <div className="flex items-start gap-1 h-6">
                   <Activity className="w-3 h-3 text-green-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Total Games</div>
+                  <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Games</div>
                 </div>
                 <div className="text-lg md:text-xl font-bold text-center">{recentGames.length}</div>
               </div>
@@ -217,7 +217,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
               <div className="flex flex-col justify-between h-full">
                 <div className="flex items-start gap-1 h-6">
                   <Crown className="w-3 h-3 text-yellow-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Checkmates</div>
+                  <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Mates</div>
                 </div>
                 <div className="text-lg md:text-xl font-bold text-center">{recentGames.filter(g => g.end_reason === 'checkmate').length}</div>
               </div>
@@ -228,7 +228,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
               <div className="flex flex-col justify-between h-full">
                 <div className="flex items-start gap-1 h-6">
                   <Clock className="w-3 h-3 text-purple-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Avg Duration</div>
+                  <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Duration</div>
                 </div>
                 <div className="text-lg md:text-xl font-bold text-center">{Math.round(recentGames.reduce((acc, g) => acc + g.duration, 0) / recentGames.length / 60) || 0}m</div>
               </div>
