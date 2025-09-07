@@ -9,7 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import ChessBoard, { ChessPiece, ChessMove } from '@/components/ChessBoard';
 import ModelSelector, { AIModel, PlayerConfig, AI_MODELS } from '@/components/ModelSelector';
 import ThinkingProcess, { AIResponse, ThinkingStep } from '@/components/ThinkingProcess';
-import GameStats, { GameResult, ModelStats } from '@/components/GameStats';
+import GameStats, { GameResult, ModelStats, EloHistoryEntry } from '@/components/GameStats';
 
 // Initial chess position
 const INITIAL_POSITION: ChessPiece[] = [
@@ -129,6 +129,7 @@ const Index = () => {
   // Game statistics - now loaded from API
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [modelStats, setModelStats] = useState<ModelStats[]>([]);
+  const [eloHistory, setEloHistory] = useState<EloHistoryEntry[]>([]);
 
   const getCurrentPlayer = () => {
     return playerConfig[currentTurn];
@@ -555,6 +556,13 @@ const Index = () => {
         const gamesData = await gamesResponse.json();
         setGameResults(gamesData.games || []);
       }
+
+      // Fetch ELO history
+      const eloResponse = await fetch('http://localhost:8001/api/stats/elo-history?limit=100');
+      if (eloResponse.ok) {
+        const eloData = await eloResponse.json();
+        setEloHistory(eloData.elo_history || []);
+      }
     } catch (error) {
       console.error('Error fetching statistics:', error);
     }
@@ -701,6 +709,7 @@ const Index = () => {
                     modelStats={modelStats}
                     recentGames={gameResults}
                     aiModels={AI_MODELS}
+                    eloHistory={eloHistory}
                   />
                 </div>
               </TabsContent>

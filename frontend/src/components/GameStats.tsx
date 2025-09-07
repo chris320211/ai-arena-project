@@ -30,13 +30,26 @@ export type ModelStats = {
   rating: number;
 };
 
+export type EloHistoryEntry = {
+  id: string;
+  model_id: string;
+  rating_before: number;
+  rating_after: number;
+  rating_change: number;
+  opponent: string;
+  game_result: 'win' | 'loss' | 'draw';
+  timestamp: string;
+  game_id: string;
+};
+
 interface GameStatsProps {
   modelStats: ModelStats[];
   recentGames: GameResult[];
   aiModels: AIModel[];
+  eloHistory?: EloHistoryEntry[];
 }
 
-const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
+const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameStatsProps) => {
   const getModelById = (id: string) => {
     return aiModels.find(model => model.id === id);
   };
@@ -137,11 +150,39 @@ const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
     },
   };
 
+  // Prepare ELO trend data
+  const eloTrendData = eloHistory.length > 0 ? (() => {
+    // Group by model and sort by timestamp
+    const groupedHistory: { [modelId: string]: EloHistoryEntry[] } = {};
+    eloHistory.forEach(entry => {
+      if (!groupedHistory[entry.model_id]) {
+        groupedHistory[entry.model_id] = [];
+      }
+      groupedHistory[entry.model_id].push(entry);
+    });
+
+    // Create trend data for chart
+    const trendData: { [timestamp: string]: any } = {};
+    Object.entries(groupedHistory).forEach(([modelId, entries]) => {
+      entries.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      entries.forEach(entry => {
+        const timeKey = new Date(entry.timestamp).toLocaleDateString();
+        if (!trendData[timeKey]) {
+          trendData[timeKey] = { date: timeKey };
+        }
+        trendData[timeKey][modelId] = entry.rating_after;
+      });
+    });
+
+    return Object.values(trendData).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  })() : [];
+
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="performance">Performance</TabsTrigger>
+        <TabsTrigger value="trends">ELO Trends</TabsTrigger>
         <TabsTrigger value="matchups">Matchups</TabsTrigger>
         <TabsTrigger value="games">Games</TabsTrigger>
       </TabsList>
@@ -448,6 +489,109 @@ const GameStats = ({ modelStats, recentGames, aiModels }: GameStatsProps) => {
             );
           })}
         </div>
+      </TabsContent>
+
+      <TabsContent value="trends" className="mt-4 space-y-4">
+        {/* ELO Rating Trends Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              ELO Rating Trends
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            {eloTrendData.length > 0 ? (
+              <div className="w-full h-[400px]">
+                <ChartContainer config={chartConfig} className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={eloTrendData} margin={{ top: 20, right: 30, bottom: 60, left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        interval={0}
+                      />
+                      <YAxis label={{ value: 'ELO Rating', angle: -90, position: 'insideLeft' }} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      {modelStats.map((stat, index) => {
+                        const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
+                        return (
+                          <Line 
+                            key={stat.model_id}
+                            type="monotone" 
+                            dataKey={stat.model_id} 
+                            stroke={colors[index % colors.length]} 
+                            strokeWidth={2}
+                            connectNulls={false}
+                          />
+                        );
+                      })}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No ELO history data available yet. Play some games to see rating trends!</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent ELO Changes */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5" />
+              Recent Rating Changes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {eloHistory.slice(0, 20).map((entry) => {
+                const model = getModelById(entry.model_id);
+                const opponent = getModelById(entry.opponent);
+                const changeColor = entry.rating_change > 0 ? 'text-green-600' : 
+                                  entry.rating_change < 0 ? 'text-red-600' : 'text-gray-600';
+                
+                return (
+                  <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("p-1 rounded", model?.color || "bg-muted")}>
+                        {model?.icon || <Users className="w-4 h-4" />}
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">{model?.name || entry.model_id}</div>
+                        <div className="text-xs text-muted-foreground">
+                          vs {opponent?.name || entry.opponent} • {entry.game_result}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={cn("font-medium", changeColor)}>
+                        {entry.rating_change > 0 ? '+' : ''}{entry.rating_change}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {entry.rating_after} ELO
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {eloHistory.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No rating changes recorded yet. Play some AI vs AI games!</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </TabsContent>
 
       <TabsContent value="matchups" className="mt-4">

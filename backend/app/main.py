@@ -25,7 +25,8 @@ load_dotenv()
 from .database import (
     connect_to_mongo, close_mongo_connection, save_game_result,
     get_recent_games, get_all_model_stats, update_model_stats,
-    update_elo_ratings, GameResult
+    update_elo_ratings, get_elo_history, get_all_elo_history,
+    GameResult, EloHistoryEntry
 )
 
 from .chess_logic import (
@@ -318,8 +319,8 @@ async def save_completed_game(winner: Optional[str], end_reason: str):
     )
     
     try:
-        # Save game result
-        await save_game_result(game_result)
+        # Save game result and get the game_id
+        game_id = await save_game_result(game_result)
         
         # Update model stats if both players are AI
         if white_model != "human" and black_model != "human":
@@ -330,8 +331,8 @@ async def save_completed_game(winner: Optional[str], end_reason: str):
             await update_model_stats(white_model, white_won, draw, STATE["move_count"], duration)
             await update_model_stats(black_model, black_won, draw, STATE["move_count"], duration)
             
-            # Update ELO ratings
-            await update_elo_ratings(white_model, black_model, winner)
+            # Update ELO ratings with game_id for history tracking
+            await update_elo_ratings(white_model, black_model, winner, game_id)
         elif white_model != "human":
             # Update stats for white AI vs human
             await update_model_stats(white_model, winner == "white", winner is None, STATE["move_count"], duration)
@@ -697,3 +698,16 @@ async def get_model_statistics():
     except Exception as e:
         print(f"Error fetching model stats: {e}")
         return {"model_stats": []}
+
+@app.get("/api/stats/elo-history")
+async def get_elo_rating_history(model_id: str = None, limit: int = 50):
+    """Get ELO rating history for a specific model or all models"""
+    try:
+        if model_id:
+            history = await get_elo_history(model_id, limit)
+        else:
+            history = await get_all_elo_history(limit)
+        return {"elo_history": [entry.dict() for entry in history]}
+    except Exception as e:
+        print(f"Error fetching ELO history: {e}")
+        return {"elo_history": []}
