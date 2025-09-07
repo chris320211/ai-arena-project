@@ -224,7 +224,7 @@ const Index = () => {
       } else if (data.status?.check) {
         toast({
           title: "Check!",
-          description: `${data.turn} is in check`,
+          description: `${data.turn.charAt(0).toUpperCase() + data.turn.slice(1)} is in check`,
           variant: "default"
         });
       } else if (data.status?.stalemate) {
@@ -516,7 +516,7 @@ const Index = () => {
       } else if (data.status?.check) {
         toast({
           title: "Check!",
-          description: `${data.turn} is in check`,
+          description: `${data.turn.charAt(0).toUpperCase() + data.turn.slice(1)} is in check`,
           variant: "default"
         });
       } else if (data.status?.stalemate) {
