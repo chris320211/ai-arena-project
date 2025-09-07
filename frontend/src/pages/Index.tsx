@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, RotateCcw, Settings } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 import ChessBoard, { ChessPiece, ChessMove } from '@/components/ChessBoard';
@@ -116,6 +116,8 @@ const Index = () => {
   const [currentTurn, setCurrentTurn] = useState<'white' | 'black'>('white');
   const [gameInProgress, setGameInProgress] = useState(false);
   const [lastMove, setLastMove] = useState<ChessMove | null>(null);
+  const [moveHistory, setMoveHistory] = useState<{position: ChessPiece[], turn: 'white' | 'black', move: ChessMove | null}[]>([]);
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   
   // AI-related state
   const [playerConfig, setPlayerConfig] = useState<PlayerConfig>({
@@ -192,16 +194,18 @@ const Index = () => {
       
       // Update board state
       const frontendPosition = convertBackendToFrontend(data.board);
+      const moveObj = data.last_move ? { 
+        from: data.last_move.from, 
+        to: data.last_move.to, 
+        piece: frontendPosition.find(p => p.position === data.last_move.to)!
+      } : null;
+      
       setPosition(frontendPosition);
       setCurrentTurn(data.turn);
+      setLastMove(moveObj);
       
-      if (data.last_move) {
-        setLastMove({ 
-          from: data.last_move.from, 
-          to: data.last_move.to, 
-          piece: frontendPosition.find(p => p.position === data.last_move.to)!
-        });
-      }
+      // Save to history
+      saveToHistory(frontendPosition, data.turn, moveObj);
 
       // Update thinking steps with result
       setThinkingSteps(prev => [...prev, {
@@ -380,6 +384,8 @@ const Index = () => {
       setGameInProgress(true);
       setAIResponse(null);
       setThinkingSteps([]);
+      setMoveHistory([]);
+      setCurrentMoveIndex(-1);
       
       toast({
         title: "New Game Started",
@@ -411,6 +417,8 @@ const Index = () => {
       setGameInProgress(false);
       setAIResponse(null);
       setThinkingSteps([]);
+      setMoveHistory([]);
+      setCurrentMoveIndex(-1);
     } catch (error) {
       console.error('Error resetting game:', error);
       toast({
@@ -506,6 +514,10 @@ const Index = () => {
       setPosition(frontendPosition);
       setCurrentTurn(data.turn);
       
+      // Save to history for human moves too
+      const moveObj = { from, to, piece: frontendPosition.find(p => p.position === to)! };
+      saveToHistory(frontendPosition, data.turn, moveObj);
+      
       if (data.status?.checkmate) {
         toast({
           title: "Checkmate!",
@@ -590,6 +602,41 @@ const Index = () => {
     return currentPlayer !== 'human' && typeof currentPlayer === 'object' ? currentPlayer : null;
   };
 
+  // Move navigation functions
+  const goBackMove = () => {
+    if (currentMoveIndex > 0) {
+      const previousMove = moveHistory[currentMoveIndex - 1];
+      setPosition(previousMove.position);
+      setCurrentTurn(previousMove.turn);
+      setLastMove(previousMove.move);
+      setCurrentMoveIndex(currentMoveIndex - 1);
+    } else if (currentMoveIndex === 0) {
+      // Go to initial position
+      setPosition(INITIAL_POSITION);
+      setCurrentTurn('white');
+      setLastMove(null);
+      setCurrentMoveIndex(-1);
+    }
+  };
+
+  const goForwardMove = () => {
+    if (currentMoveIndex < moveHistory.length - 1) {
+      const nextMove = moveHistory[currentMoveIndex + 1];
+      setPosition(nextMove.position);
+      setCurrentTurn(nextMove.turn);
+      setLastMove(nextMove.move);
+      setCurrentMoveIndex(currentMoveIndex + 1);
+    }
+  };
+
+  const saveToHistory = (newPosition: ChessPiece[], newTurn: 'white' | 'black', move: ChessMove | null) => {
+    // If we're not at the end of history, remove future moves
+    const newHistory = moveHistory.slice(0, currentMoveIndex + 1);
+    newHistory.push({ position: newPosition, turn: newTurn, move });
+    setMoveHistory(newHistory);
+    setCurrentMoveIndex(newHistory.length - 1);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
       {/* Header */}
@@ -653,8 +700,30 @@ const Index = () => {
                     )}
                   </div>
                   
-                  <div className="text-sm text-muted-foreground">
-                    Move #{Math.floor((32 - position.filter(p => p.position).length) / 2) + 1}
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm text-muted-foreground">
+                      Move #{currentMoveIndex + 1} / {moveHistory.length}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 p-0"
+                        onClick={goBackMove}
+                        disabled={currentMoveIndex < 0}
+                      >
+                        <ChevronLeft className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 p-0"
+                        onClick={goForwardMove}
+                        disabled={currentMoveIndex >= moveHistory.length - 1}
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
