@@ -1,6 +1,6 @@
-# AI Arena Chess Project
+# AI Arena Chess
 
-A full-stack chess application featuring AI opponents powered by various AI models. Players can compete against different AI models or watch AI vs AI matches, with complete game statistics and ELO rankings stored in MongoDB.
+A full-stack chess application where AI models compete against each other and human players. Features comprehensive game statistics, ELO rankings, and support for multiple AI providers.
 
 ## Project Structure
 
@@ -25,139 +25,129 @@ ai-arena-project/
 
 ## Features
 
-- **Interactive Chess Board**: Drag-and-drop chess interface with move validation
-- **AI Opponents**: Multiple AI models including GPT-4o Mini, Llama3, and Phi3.5
-- **AI vs AI Mode**: Watch AI models compete against each other
-- **Game Statistics**: Complete game history with MongoDB persistence
-- **ELO Rating System**: Competitive rankings for AI models
-- **Model Performance Analytics**: Win rates, average move times, and detailed statistics
-- **Real-time Updates**: Live game state and statistics refresh
-- **Modern UI**: Built with React, TypeScript, and Tailwind CSS using shadcn/ui components
+- **Interactive Chess Interface**: Drag-and-drop chess board with move validation and history navigation
+- **Multiple AI Models**: Support for OpenAI GPT, Anthropic Claude, Google Gemini, Ollama, and custom APIs
+- **AI vs AI Matches**: Watch different AI models compete with real-time analysis
+- **ELO Rating System**: Competitive rankings with proper win/loss/draw calculations
+- **Game Analytics**: Detailed statistics, performance metrics, and rating trends
+- **Move History**: Navigate through game moves with back/forward controls
+- **Modern UI**: Built with React, TypeScript, and Tailwind CSS
 
-## 🚀 Launch the Arena
+## Quick Start
 
-**Prerequisites:** 
-1. Install Docker Desktop and Node.js 18+
-2. Start Docker Desktop
+### Prerequisites
+- Docker Desktop
+- Node.js 18+
 
-**Deploy the battlefield:**
+### Setup
 ```bash
-# Copy environment template (optional - creates .env for API keys)
-cp .env.example .env
+# Clone and navigate to project
+git clone <repository>
+cd ai-arena-project
 
-# Launch complete stack with MongoDB
-docker-compose up --build -d
+# Copy environment template
+cp backend/.env.example backend/.env
 
-# Start frontend (Local development)
-cd frontend && npm install && npm run dev
+# Start services
+docker-compose up -d
+
+# Install and start frontend
+cd frontend
+npm install
+npm run dev
 ```
 
-**Access your AI arena:**
-- 🎯 **Battle Interface:** http://localhost:8080/
-- 🧠 **AI Command Center:** http://localhost:8001/docs
-- 📊 **Statistics Dashboard:** Available in the Stats tab of the frontend
+### Access Points
+- **Application**: http://localhost:8080
+- **API Documentation**: http://localhost:8001/docs
+- **MongoDB**: localhost:27017
 
-**Power down:**
+## Configuration
+
+### AI Models
+Add API keys to `backend/.env`:
+
 ```bash
-docker-compose down
-# To also remove data volumes: docker-compose down -v
+# OpenAI (GPT-4o Mini, GPT-4o)
+OPENAI_API_KEY=sk-your-openai-key
+
+# Anthropic Claude
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
+
+# Google Gemini
+GOOGLE_API_KEY=your-google-key
+
+# Custom API providers
+CUSTOM_AI_1_URL=https://api.provider.com/v1/chat/completions
+CUSTOM_AI_1_API_KEY=your-api-key
+CUSTOM_AI_1_MODEL=model-name
 ```
 
----
-
-## 🤖 AI Opponents Setup
-
-**Cheapest Option (~$0.20 for 1000 games):**
+### Local Models (Ollama)
 ```bash
-# Get free API key from https://huggingface.co/settings/tokens
-HF_API_KEY=your_huggingface_api_key_here
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Download models
+ollama pull llama3:8b
+ollama pull phi3.5
 ```
 
-**Premium Options:**
-```bash
-# OpenAI (~$0.15 for 1000 games) 
-OPENAI_API_KEY=your_key_here
-
-# Anthropic Claude (~$0.25 for 1000 games)
-ANTHROPIC_API_KEY=your_key_here
-```
-
-**That's it!** Just add one API key to `.env` and start playing!
-
-## ⚔️ Battle Modes
-
-**Human vs AI:** Challenge the machines
-**AI vs AI:** Watch artificial minds clash
-**Tournament Mode:** Coming soon - Multi-agent competitions
-
-## 🏗️ Development Mode
-
-For AI researchers and developers:
-```bash
-# Launch development arena
-docker-compose -f docker-compose.dev.yml up
-```
+## Development
 
 ### Production Build
+```bash
+# Build frontend
+cd frontend && npm run build
 
-1. **Build Frontend**:
-   ```bash
-   cd frontend
-   npm run build
-   ```
+# Start backend (serves both API and frontend)
+cd backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
-2. **Start Backend** (serves both API and frontend):
-   ```bash
-   cd backend
-   source venv/bin/activate  # Windows: venv\Scripts\activate
-   uvicorn app.main:app --host 0.0.0.0 --port 8000
-   ```
+### API Endpoints
+Key backend endpoints:
 
-The application will be available at `http://localhost:8000`
-
-## API Endpoints
-
-The backend provides the following key endpoints:
-
-- `GET /state` - Get current game state
+- `GET /state` - Current game state
 - `POST /move` - Make a move
-- `POST /new` - Start a new game
+- `POST /new` - Start new game
 - `POST /set-bots` - Configure AI opponents
 - `POST /ai-step` - Execute AI move
-- `GET /health` - Health check
+- `GET /api/stats/models` - Model statistics
+- `GET /api/stats/elo-history` - ELO rating history
 
-Full API documentation is available at `http://localhost:8000/docs` when the backend is running.
+Full API documentation: `http://localhost:8001/docs`
 
-## Environment Variables
-
-Optional environment variables for customization:
-
+### Environment Variables
 ```bash
-# Ollama configuration
+# MongoDB
+MONGODB_URL=mongodb://localhost:27017/ai-arena
+
+# Ollama (local models)
 OLLAMA_BASE=http://localhost:11434
 OLLAMA_MODEL_LLAMA3=llama3:8b
 OLLAMA_MODEL_PHI35=phi3.5
 ```
 
-## Troubleshooting
-
-- **Backend not starting**: Run `python setup.py` in the backend directory, then activate venv
-- **Frontend not loading**: Run `npm install` in the frontend directory
-- **AI opponents not working**: Install Ollama and download models (`ollama pull llama3:8b`)
-- **Port conflicts**: Frontend runs on 8080, backend on 8000
-
-## Technologies Used
+## Technology Stack
 
 ### Backend
-- **FastAPI**: Modern Python web framework
-- **Uvicorn**: ASGI server
-- **Pydantic**: Data validation
-- **Requests**: HTTP client for Ollama integration
+- **FastAPI** - Modern Python web framework
+- **MongoDB** - Game data and statistics storage
+- **Pydantic** - Data validation and serialization
+- **Motor** - Async MongoDB driver
 
 ### Frontend
-- **React 18**: Frontend library
-- **TypeScript**: Type-safe JavaScript
-- **Vite**: Build tool and dev server
-- **Tailwind CSS**: Utility-first CSS framework
-- **shadcn/ui**: React component library
-- **React Router**: Client-side routing
+- **React 18** - UI framework
+- **TypeScript** - Type-safe development
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Styling framework
+- **shadcn/ui** - Component library
+- **Recharts** - Data visualization
+
+### AI Integration
+- **OpenAI API** - GPT models
+- **Anthropic API** - Claude models
+- **Google AI** - Gemini models
+- **Ollama** - Local model hosting
+- **Custom HTTP APIs** - Generic AI provider support
