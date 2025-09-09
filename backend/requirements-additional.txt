@@ -1,0 +1,12 @@
+# Additional AI provider dependencies
+# Install these based on which providers you want to use
+
+# For Anthropic Claude
+anthropic>=0.7.0
+
+# For Google Gemini
+google-generativeai>=0.3.0
+
+# Already included in main requirements.txt:
+# openai (for OpenAI models)
+# requests (for HTTP API calls)

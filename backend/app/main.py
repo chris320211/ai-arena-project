@@ -15,8 +15,17 @@ import requests
 import time
 from dotenv import load_dotenv
 
-# Add OpenAI import
+# Add AI provider imports
 from openai import OpenAI
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
+
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
 
 # Load environment variables from .env file
 load_dotenv()
@@ -178,12 +187,252 @@ class OpenAIAI:
         tx, ty = _alg_to_xy(obj["to"])
         return (fx, fy, tx, ty)
 
+
+# Add Claude/Anthropic AI class
+class AnthropicAI:
+    def __init__(self, model: str):
+        if not anthropic:
+            raise ImportError("anthropic package not installed. Install with: pip install anthropic")
+        self.model = model
+        self.client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+    def choose(self, board, side):
+        legal = _legal_moves_alg(board, side)
+        system_text = (
+            "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
+            "matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
+            "Choose strictly from the provided legal_moves."
+        )
+        user_text = (
+            f"turn: {side}\n"
+            f"legal_moves: {legal}\n"
+            f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
+            "If multiple good choices exist, prefer checks, captures, and center control."
+        )
+        
+        message = self.client.messages.create(
+            model=self.model,
+            max_tokens=150,
+            temperature=0,
+            system=system_text,
+            messages=[{"role": "user", "content": user_text}]
+        )
+        txt = message.content[0].text
+        import json, re
+        try:
+            obj = json.loads(txt)
+        except Exception:
+            candidates = re.findall(r"\{.*?\}", txt, flags=re.S)
+            obj = None
+            for c in candidates:
+                try:
+                    o = json.loads(c)
+                    if isinstance(o, dict) and "to" in o and ("from" in o or "from_" in o):
+                        obj = o
+                        break
+                except Exception:
+                    continue
+            if obj is None:
+                snippet = txt[:160].replace("\n"," ")
+                raise HTTPException(500, f"Anthropic bad JSON; got: {snippet}...")
+        if "from" in obj and "from_" not in obj:
+            obj["from_"] = obj["from"]
+        fx, fy = _alg_to_xy(obj["from_"])
+        tx, ty = _alg_to_xy(obj["to"])
+        return (fx, fy, tx, ty)
+
+
+# Add Google Gemini AI class
+class GeminiAI:
+    def __init__(self, model: str):
+        if not genai:
+            raise ImportError("google-generativeai package not installed. Install with: pip install google-generativeai")
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        self.model = genai.GenerativeModel(model)
+
+    def choose(self, board, side):
+        legal = _legal_moves_alg(board, side)
+        system_text = (
+            "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
+            "matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
+            "Choose strictly from the provided legal_moves."
+        )
+        user_text = (
+            f"turn: {side}\n"
+            f"legal_moves: {legal}\n"
+            f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
+            "If multiple good choices exist, prefer checks, captures, and center control."
+        )
+        
+        prompt = system_text + "\n\n" + user_text
+        response = self.model.generate_content(prompt)
+        txt = response.text
+        import json, re
+        try:
+            obj = json.loads(txt)
+        except Exception:
+            candidates = re.findall(r"\{.*?\}", txt, flags=re.S)
+            obj = None
+            for c in candidates:
+                try:
+                    o = json.loads(c)
+                    if isinstance(o, dict) and "to" in o and ("from" in o or "from_" in o):
+                        obj = o
+                        break
+                except Exception:
+                    continue
+            if obj is None:
+                snippet = txt[:160].replace("\n"," ")
+                raise HTTPException(500, f"Gemini bad JSON; got: {snippet}...")
+        if "from" in obj and "from_" not in obj:
+            obj["from_"] = obj["from"]
+        fx, fy = _alg_to_xy(obj["from_"])
+        tx, ty = _alg_to_xy(obj["to"])
+        return (fx, fy, tx, ty)
+
+
+# Add Generic HTTP API AI class for other providers
+class HttpAI:
+    def __init__(self, name: str, url: str, headers: dict, model: str):
+        self.name = name
+        self.url = url
+        self.headers = headers
+        self.model = model
+
+    def choose(self, board, side):
+        legal = _legal_moves_alg(board, side)
+        system_text = (
+            "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
+            "matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
+            "Choose strictly from the provided legal_moves."
+        )
+        user_text = (
+            f"turn: {side}\n"
+            f"legal_moves: {legal}\n"
+            f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
+            "If multiple good choices exist, prefer checks, captures, and center control."
+        )
+        
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_text},
+                {"role": "user", "content": user_text}
+            ],
+            "temperature": 0,
+            "max_tokens": 150
+        }
+        
+        try:
+            response = requests.post(self.url, json=payload, headers=self.headers, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Handle different response formats
+            txt = ""
+            if "choices" in data and len(data["choices"]) > 0:
+                # OpenAI-like format
+                if "message" in data["choices"][0]:
+                    txt = data["choices"][0]["message"]["content"]
+                elif "text" in data["choices"][0]:
+                    txt = data["choices"][0]["text"]
+            elif "content" in data:
+                # Direct content format
+                txt = data["content"]
+            elif "response" in data:
+                # Ollama-like format
+                txt = data["response"]
+            else:
+                raise HTTPException(500, f"Unknown response format from {self.name}")
+                
+        except requests.RequestException as e:
+            raise HTTPException(500, f"{self.name} request failed: {e}")
+        
+        import json, re
+        try:
+            obj = json.loads(txt)
+        except Exception:
+            candidates = re.findall(r"\{.*?\}", txt, flags=re.S)
+            obj = None
+            for c in candidates:
+                try:
+                    o = json.loads(c)
+                    if isinstance(o, dict) and "to" in o and ("from" in o or "from_" in o):
+                        obj = o
+                        break
+                except Exception:
+                    continue
+            if obj is None:
+                snippet = txt[:160].replace("\n"," ")
+                raise HTTPException(500, f"{self.name} bad JSON; got: {snippet}...")
+        if "from" in obj and "from_" not in obj:
+            obj["from_"] = obj["from"]
+        fx, fy = _alg_to_xy(obj["from_"])
+        tx, ty = _alg_to_xy(obj["to"])
+        return (fx, fy, tx, ty)
+
+# Helper function to safely create AI engines
+def create_ai_engine(engine_type, *args, **kwargs):
+    try:
+        if engine_type == "anthropic":
+            return AnthropicAI(*args, **kwargs)
+        elif engine_type == "gemini":
+            return GeminiAI(*args, **kwargs)
+        elif engine_type == "openai":
+            return OpenAIAI(*args, **kwargs)
+        elif engine_type == "http":
+            return HttpAI(*args, **kwargs)
+        else:
+            raise ValueError(f"Unknown engine type: {engine_type}")
+    except Exception as e:
+        print(f"Failed to create {engine_type} engine: {e}")
+        return None
+
 ENGINES = {
     "random": RandomAI(),
     "ollama_llama3": OllamaAI(os.getenv("OLLAMA_MODEL_LLAMA3", "llama3:8b")),
     "ollama_phi35": OllamaAI(os.getenv("OLLAMA_MODEL_PHI35", "phi3.5")),
     "openai_gpt4o_mini": OpenAIAI("gpt-4o-mini"),
+    
+    # New API-based bots (will be None if API keys are not provided)
+    "anthropic_claude": create_ai_engine("anthropic", "claude-3-5-sonnet-20241022") if os.getenv("ANTHROPIC_API_KEY") else None,
+    "gemini_pro": create_ai_engine("gemini", "gemini-1.5-pro") if os.getenv("GOOGLE_API_KEY") else None,
+    "openai_gpt4o": create_ai_engine("openai", "gpt-4o") if os.getenv("OPENAI_API_KEY") else None,
+    
+    # Generic HTTP API slots for custom providers
+    # These can be configured via environment variables
 }
+
+# Add custom HTTP bots if configured
+if os.getenv("CUSTOM_AI_1_URL") and os.getenv("CUSTOM_AI_1_API_KEY"):
+    ENGINES["custom_ai_1"] = create_ai_engine(
+        "http",
+        name="Custom AI 1",
+        url=os.getenv("CUSTOM_AI_1_URL"),
+        headers={"Authorization": f"Bearer {os.getenv('CUSTOM_AI_1_API_KEY')}", "Content-Type": "application/json"},
+        model=os.getenv("CUSTOM_AI_1_MODEL", "default")
+    )
+
+if os.getenv("CUSTOM_AI_2_URL") and os.getenv("CUSTOM_AI_2_API_KEY"):
+    ENGINES["custom_ai_2"] = create_ai_engine(
+        "http", 
+        name="Custom AI 2",
+        url=os.getenv("CUSTOM_AI_2_URL"),
+        headers={"Authorization": f"Bearer {os.getenv('CUSTOM_AI_2_API_KEY')}", "Content-Type": "application/json"},
+        model=os.getenv("CUSTOM_AI_2_MODEL", "default")
+    )
+
+if os.getenv("CUSTOM_AI_3_URL") and os.getenv("CUSTOM_AI_3_API_KEY"):
+    ENGINES["custom_ai_3"] = create_ai_engine(
+        "http",
+        name="Custom AI 3", 
+        url=os.getenv("CUSTOM_AI_3_URL"),
+        headers={"Authorization": f"Bearer {os.getenv('CUSTOM_AI_3_API_KEY')}", "Content-Type": "application/json"},
+        model=os.getenv("CUSTOM_AI_3_MODEL", "default")
+    )
+
+# Filter out None engines
+ENGINES = {k: v for k, v in ENGINES.items() if v is not None}
 
 BOTS = {
     "white": None,

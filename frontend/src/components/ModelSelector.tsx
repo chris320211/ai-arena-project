@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, User, Target, Cpu } from 'lucide-react';
+import { Brain, User, Target, Cpu, Sparkles, Zap, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type AIModel = {
@@ -56,6 +56,62 @@ const AI_MODELS: AIModel[] = [
     style: 'Unpredictable',
     icon: <Cpu className="w-5 h-5" />,
     color: 'from-orange-500 to-red-600'
+  },
+  // New API-based models (these will only show if the backend has them available)
+  {
+    id: 'anthropic_claude',
+    name: 'Claude 3.5 Sonnet',
+    description: 'Anthropic\'s most capable model with excellent reasoning',
+    strength: 2300,
+    style: 'Deep & Thoughtful',
+    icon: <Sparkles className="w-5 h-5" />,
+    color: 'from-purple-500 to-indigo-600'
+  },
+  {
+    id: 'gemini_pro',
+    name: 'Gemini 1.5 Pro',
+    description: 'Google\'s multimodal AI with strong analytical skills',
+    strength: 2200,
+    style: 'Analytical & Creative',
+    icon: <Brain className="w-5 h-5" />,
+    color: 'from-blue-500 to-purple-600'
+  },
+  {
+    id: 'openai_gpt4o',
+    name: 'GPT-4o',
+    description: 'OpenAI\'s flagship model with advanced reasoning',
+    strength: 2400,
+    style: 'Sophisticated & Strategic',
+    icon: <Brain className="w-5 h-5" />,
+    color: 'from-emerald-600 to-blue-600'
+  },
+  // Custom AI slots
+  {
+    id: 'custom_ai_1',
+    name: 'Custom AI 1',
+    description: 'Custom AI provider via API',
+    strength: 1800,
+    style: 'Custom Strategy',
+    icon: <Zap className="w-5 h-5" />,
+    color: 'from-yellow-500 to-orange-600'
+  },
+  {
+    id: 'custom_ai_2',
+    name: 'Custom AI 2',
+    description: 'Custom AI provider via API',
+    strength: 1800,
+    style: 'Custom Strategy',
+    icon: <Globe className="w-5 h-5" />,
+    color: 'from-pink-500 to-rose-600'
+  },
+  {
+    id: 'custom_ai_3',
+    name: 'Custom AI 3',
+    description: 'Custom AI provider via API',
+    strength: 1800,
+    style: 'Custom Strategy',
+    icon: <Target className="w-5 h-5" />,
+    color: 'from-violet-500 to-purple-600'
   }
 ];
 
