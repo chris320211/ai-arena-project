@@ -55,6 +55,9 @@ docker-compose up -d
 cd frontend
 npm install
 npm run dev
+
+# Stop services when done
+docker-compose down
 ```
 
 ### Access Points
