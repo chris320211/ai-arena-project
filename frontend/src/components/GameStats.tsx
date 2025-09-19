@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, Target, Clock, TrendingUp, Medal, Crown, BarChart3, Zap, Users, Activity } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Trophy, Target, Clock, TrendingUp, Medal, Crown, BarChart3, Zap, Users, Activity, ArrowLeftRight } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
@@ -74,6 +75,13 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
     if (value === selectedModel1 && value !== '') {
       setSelectedModel1('');
     }
+  };
+
+  // Switch the sides of the selected models
+  const handleSwitchModels = () => {
+    const temp = selectedModel1;
+    setSelectedModel1(selectedModel2);
+    setSelectedModel2(temp);
   };
 
   // Filter data based on selected models
@@ -245,21 +253,27 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-accent" />
-              <h3 className="font-semibold">Compare Models</h3>
+              <h3 className="font-semibold">Head-to-Head Analysis</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">First Model</label>
+            <div className="flex flex-col md:flex-row items-end gap-4 w-full max-w-4xl mx-auto">
+              <div className="bg-card border border-border/60 rounded-lg p-5 space-y-4 flex-1 min-w-0 w-full md:w-auto">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 bg-white border-2 border-gray-700 rounded-full flex-shrink-0" />
+                  <label className="text-sm font-semibold">White Model</label>
+                </div>
                 <Select value={selectedModel1} onValueChange={handleModel1Change}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a model" />
+                  <SelectTrigger className="h-11 px-4 w-full">
+                    <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem
                       value="human"
                       disabled={selectedModel2 === 'human'}
                     >
-                      Human Player
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-gradient-to-r from-green-500 to-blue-500"></div>
+                        Human Player
+                      </div>
                     </SelectItem>
                     {aiModels.map(model => (
                       <SelectItem
@@ -276,18 +290,25 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Second Model</label>
+
+              <div className="bg-card border border-border/60 rounded-lg p-5 space-y-4 flex-1 min-w-0 w-full md:w-auto">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 bg-gray-800 rounded-full flex-shrink-0" />
+                  <label className="text-sm font-semibold">Black Model</label>
+                </div>
                 <Select value={selectedModel2} onValueChange={handleModel2Change}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a model" />
+                  <SelectTrigger className="h-11 px-4 w-full">
+                    <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem
                       value="human"
                       disabled={selectedModel1 === 'human'}
                     >
-                      Human Player
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-gradient-to-r from-green-500 to-blue-500"></div>
+                        Human Player
+                      </div>
                     </SelectItem>
                     {aiModels.map(model => (
                       <SelectItem
@@ -305,8 +326,22 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                 </Select>
               </div>
             </div>
+
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSwitchModels}
+                disabled={!selectedModel1 && !selectedModel2}
+                className="h-8 px-3 gap-2"
+                title="Switch models"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                <span className="text-xs">Switch</span>
+              </Button>
+            </div>
             <div className="text-xs text-muted-foreground">
-              Select models to compare their performance. Choose one model to see its overall stats, or select both for head-to-head comparison. Leave empty to see no data.
+              Select both models to view their head-to-head performance statistics and match history. Each model's performance will be shown for their respective color.
             </div>
           </div>
         </CardContent>
@@ -322,202 +357,258 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
         </TabsList>
       
       <TabsContent value="overview" className="mt-4 space-y-4">
-        {!selectedModel1 && !selectedModel2 ? (
+        {!selectedModel1 || !selectedModel2 ? (
           <Card>
             <CardContent className="p-8">
               <div className="text-center text-muted-foreground">
                 <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-medium mb-2">Select Models to Compare</h3>
-                <p className="text-sm">Choose one or more models from the dropdowns above to view their statistics and performance data.</p>
+                <h3 className="text-lg font-medium mb-2">Select Two Models to Compare</h3>
+                <p className="text-sm">Choose both models from the dropdowns above to view their head-to-head statistics and match history.</p>
               </div>
             </CardContent>
           </Card>
         ) : (
         <>
-        {/* Key Metrics Dashboard */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
-          <Card>
-            <CardContent className="p-2 md:p-3 h-16 md:h-20">
-              <div className="flex flex-col justify-between h-full">
-                <div className="flex items-start gap-1 h-6">
-                  <Users className="w-3 h-3 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Models</div>
-                </div>
-                <div className="text-lg md:text-xl font-bold text-center">{filteredStats.length}</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-2 md:p-3 h-16 md:h-20">
-              <div className="flex flex-col justify-between h-full">
-                <div className="flex items-start gap-1 h-6">
-                  <Activity className="w-3 h-3 text-green-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Games</div>
-                </div>
-                <div className="text-lg md:text-xl font-bold text-center">{filteredGames.length}</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-2 md:p-3 h-16 md:h-20">
-              <div className="flex flex-col justify-between h-full">
-                <div className="flex items-start gap-1 h-6">
-                  <Crown className="w-3 h-3 text-yellow-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Mates</div>
-                </div>
-                <div className="text-lg md:text-xl font-bold text-center">{filteredGames.filter(g => g.end_reason === 'checkmate').length}</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-2 md:p-3 h-16 md:h-20">
-              <div className="flex flex-col justify-between h-full">
-                <div className="flex items-start gap-1 h-6">
-                  <Clock className="w-3 h-3 text-purple-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Duration</div>
-                </div>
-                <div className="text-lg md:text-xl font-bold text-center">{Math.round(filteredGames.reduce((acc, g) => acc + g.duration, 0) / filteredGames.length / 60) || 0}m</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Game Results Distribution */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Game Results
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="w-full h-[200px]">
-                <ChartContainer config={chartConfig} className="w-full h-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={gameResultsData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ value }) => value > 0 ? `${value}` : ''}
-                        outerRadius="75%"
-                        innerRadius="35%"
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {gameResultsData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="w-5 h-5" />
-                End Reasons
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="w-full h-[200px]">
-                <ChartContainer config={chartConfig} className="w-full h-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={endReasonsData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ value }) => value > 0 ? `${value}` : ''}
-                        outerRadius="75%"
-                        innerRadius="35%"
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {endReasonsData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Model Rankings */}
+        {/* Head-to-Head Performance */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="w-6 h-6 text-accent" />
-              Model Rankings
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center justify-center gap-3">
+              <div className="relative flex-shrink-0">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 border-2 border-blue-300 rounded-lg shadow-md flex items-center justify-center">
+                  <Trophy className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-foreground">Head-to-Head Performance</div>
+                <div className="text-sm text-muted-foreground mt-1">Win/Loss breakdown by model and color</div>
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              {sortedStats.map((stats, index) => {
-                const model = getModelById(stats.model_id);
-                if (!model) return null;
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* White Model Performance */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <div className="w-4 h-4 bg-white border-2 border-gray-700 rounded-full flex-shrink-0" />
+                  <span className="text-sm font-semibold">White Model</span>
+                </div>
+                {(() => {
+                  const model = getModelById(selectedModel1);
+                  const modelName = selectedModel1 === 'human' ? 'Human' : model?.name?.split(' ')[0] || selectedModel1;
+                  const asWhiteGames = filteredGames.filter(g => g.white_model === selectedModel1);
+                  const whiteWins = asWhiteGames.filter(g => g.winner === 'white').length;
+                  const whiteTotal = asWhiteGames.length;
+                  const winRate = whiteTotal > 0 ? (whiteWins / whiteTotal) * 100 : 0;
 
-                return (
-                  <div key={stats.model_id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
-                          index === 0 ? "bg-yellow-500 text-yellow-900" :
-                          index === 1 ? "bg-gray-400 text-gray-900" :
-                          index === 2 ? "bg-orange-600 text-white" :
-                          "bg-muted text-muted-foreground"
-                        )}>
-                          {index + 1}
-                        </span>
-                        <div className={cn(
-                          "p-2 rounded-lg bg-gradient-to-r flex-shrink-0",
-                          model.color
-                        )}>
-                          {model.icon}
+                  return (
+                    <div className="bg-card border border-border/60 rounded-lg p-4 h-24 flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {selectedModel1 === 'human' ? (
+                            <div className="p-1.5 rounded-md bg-gradient-to-r from-green-500 to-blue-500 shadow-sm flex-shrink-0">
+                              <Users className="w-3 h-3 text-white" />
+                            </div>
+                          ) : model && (
+                            <div className={cn("p-1.5 rounded-md bg-gradient-to-r shadow-sm flex-shrink-0", model.color)}>
+                              <div className="w-3 h-3 flex items-center justify-center">
+                                {model.icon}
+                              </div>
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-sm truncate">{modelName}</div>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-lg font-bold">{whiteWins}<span className="text-muted-foreground text-sm">/{whiteTotal}</span></div>
                         </div>
                       </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-medium truncate text-sm md:text-base max-w-[120px] md:max-w-none">{model.name}</span>
-                          <Badge variant="outline" className="text-xs flex-shrink-0">
-                            {stats.rating} ELO
-                          </Badge>
-                        </div>
-                        <div className="text-xs md:text-sm text-muted-foreground">
-                          <span className="inline-block">{stats.games_played} games</span>
-                          <span className="mx-1">•</span>
-                          <span className={cn("inline-block", getWinRateColor(stats.win_rate))}>
-                            {stats.win_rate.toFixed(1)}% win rate
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Win Rate</span>
+                          <span className={cn("text-sm font-bold", getWinRateColor(winRate))}>
+                            {winRate.toFixed(0)}%
                           </span>
+                        </div>
+                        <div className="w-full bg-muted/30 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={cn("h-full transition-all duration-500 rounded-full",
+                              winRate >= 70 ? "bg-green-500" :
+                              winRate >= 50 ? "bg-yellow-500" : "bg-red-500"
+                            )}
+                            style={{ width: `${Math.max(winRate, 5)}%` }}
+                          />
                         </div>
                       </div>
                     </div>
-                      
-                    <div className="text-right sm:text-left flex-shrink-0 min-w-0">
-                      <div className="text-xs md:text-sm font-medium">
-                        {stats.wins}W {stats.draws}D {stats.losses}L
+                  );
+                })()}
+              </div>
+
+              {/* Black Model Performance */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <div className="w-4 h-4 bg-gray-800 rounded-full flex-shrink-0" />
+                  <span className="text-sm font-semibold">Black Model</span>
+                </div>
+                {(() => {
+                  const model = getModelById(selectedModel2);
+                  const modelName = selectedModel2 === 'human' ? 'Human' : model?.name?.split(' ')[0] || selectedModel2;
+                  const asBlackGames = filteredGames.filter(g => g.black_model === selectedModel2);
+                  const blackWins = asBlackGames.filter(g => g.winner === 'black').length;
+                  const blackTotal = asBlackGames.length;
+                  const winRate = blackTotal > 0 ? (blackWins / blackTotal) * 100 : 0;
+
+                  return (
+                    <div className="bg-card border border-border/60 rounded-lg p-4 h-24 flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {selectedModel2 === 'human' ? (
+                            <div className="p-1.5 rounded-md bg-gradient-to-r from-green-500 to-blue-500 shadow-sm flex-shrink-0">
+                              <Users className="w-3 h-3 text-white" />
+                            </div>
+                          ) : model && (
+                            <div className={cn("p-1.5 rounded-md bg-gradient-to-r shadow-sm flex-shrink-0", model.color)}>
+                              <div className="w-3 h-3 flex items-center justify-center">
+                                {model.icon}
+                              </div>
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-sm truncate">{modelName}</div>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-lg font-bold">{blackWins}<span className="text-muted-foreground text-sm">/{blackTotal}</span></div>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        Avg: {Math.round(stats.avg_move_time)}s/move
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Win Rate</span>
+                          <span className={cn("text-sm font-bold", getWinRateColor(winRate))}>
+                            {winRate.toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-muted/30 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={cn("h-full transition-all duration-500 rounded-full",
+                              winRate >= 70 ? "bg-green-500" :
+                              winRate >= 50 ? "bg-yellow-500" : "bg-red-500"
+                            )}
+                            style={{ width: `${Math.max(winRate, 5)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Match History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-6 h-6 text-primary" />
+              Match History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+              {filteredGames.slice(0, 10).map((game, index) => {
+                const whiteModel = getModelById(game.white_model);
+                const blackModel = getModelById(game.black_model);
+                const gameDate = new Date(game.timestamp).toLocaleDateString();
+                const gameTime = new Date(game.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                return (
+                  <div key={game._id} className="group relative p-3 rounded-lg border border-border/50 hover:border-border hover:bg-muted/30 transition-all duration-200">
+                    {/* Game number badge */}
+                    <div className="absolute top-2 right-2 text-xs text-muted-foreground font-mono">
+                      #{filteredGames.length - index}
+                    </div>
+
+                    {/* Main game info */}
+                    <div className="flex items-center justify-between gap-4 mb-2">
+                      {/* Players */}
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {/* White player */}
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="w-3 h-3 bg-white border-2 border-gray-700 rounded-full flex-shrink-0" />
+                          <span className="text-sm font-semibold truncate max-w-[80px] md:max-w-none">
+                            {whiteModel?.name || (game.white_model === 'human' ? 'Human' : game.white_model)}
+                          </span>
+                        </div>
+
+                        {/* VS divider with result */}
+                        <div className="flex flex-col items-center gap-1 px-2">
+                          <div className="text-xs text-muted-foreground font-medium">VS</div>
+                          <div className={cn(
+                            "w-2 h-2 rounded-full",
+                            game.winner === 'white' ? "bg-white border border-gray-700" :
+                            game.winner === 'black' ? "bg-gray-800" :
+                            "bg-yellow-500"
+                          )} />
+                        </div>
+
+                        {/* Black player */}
+                        <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                          <span className="text-sm font-semibold truncate max-w-[80px] md:max-w-none text-right">
+                            {blackModel?.name || (game.black_model === 'human' ? 'Human' : game.black_model)}
+                          </span>
+                          <div className="w-3 h-3 bg-gray-800 rounded-full flex-shrink-0" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Game details */}
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      {/* Winner badge */}
+                      <Badge
+                        variant={
+                          game.winner === 'white' ? 'default' :
+                          game.winner === 'black' ? 'secondary' :
+                          'outline'
+                        }
+                        className="text-xs font-medium"
+                      >
+                        {game.winner === null ? 'Draw' :
+                         game.winner === 'white' ? 'White Wins' : 'Black Wins'}
+                      </Badge>
+
+                      {/* End reason */}
+                      {getEndReasonBadge(game.end_reason)}
+
+                      {/* Game stats */}
+                      <div className="flex items-center gap-3 text-muted-foreground ml-auto">
+                        <span className="flex items-center gap-1">
+                          <Target className="w-3 h-3" />
+                          {game.moves} moves
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatDuration(game.duration)}
+                        </span>
+                        <span className="hidden md:inline">
+                          {gameDate} {gameTime}
+                        </span>
+                        <span className="md:hidden">
+                          {gameDate}
+                        </span>
                       </div>
                     </div>
                   </div>
                 );
               })}
+
+              {filteredGames.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No games found for the selected models. Play some games to see match history!</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
