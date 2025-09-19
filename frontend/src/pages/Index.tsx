@@ -675,51 +675,59 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-3">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
           {/* Left Column - Game Board */}
-          <div className="xl:col-span-2 space-y-6">
+          <div className="xl:col-span-2 space-y-3">
             {/* Game Status */}
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-4 h-4 rounded-full ${
-                        currentTurn === 'white' ? 'bg-white border-2 border-gray-800' : 'bg-gray-800'
-                      }`} />
-                      <span className="font-medium">
-                        {currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1)} to move
-                      </span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50">
+                        <span className="text-xs text-muted-foreground font-medium">Turn:</span>
+                        <div className="flex items-center gap-1.5">
+                          <div className={`w-3 h-3 rounded-full shadow-sm ${
+                            currentTurn === 'white' ? 'bg-white border-2 border-gray-700' : 'bg-gray-800 border border-gray-600'
+                          }`} />
+                          <span className="font-bold text-sm text-foreground">
+                            {currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    
-                    {gameInProgress && (
-                      <Badge variant={isAIThinking ? "default" : "secondary"}>
-                        {isAIThinking ? "AI Thinking..." : "Game Active"}
-                      </Badge>
-                    )}
+
+                    <Badge
+                      variant={gameInProgress ? (isAIThinking ? "default" : "secondary") : "outline"}
+                      className={`text-xs font-medium ${isAIThinking ? 'animate-pulse' : ''}`}
+                    >
+                      {gameInProgress ? (isAIThinking ? "🤔 AI Thinking..." : "⚡ Game Active") : "⏸️ Game Inactive"}
+                    </Badge>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="text-sm text-muted-foreground">
-                      Move #{currentMoveIndex + 1} / {moveHistory.length}
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-muted-foreground font-medium px-2 py-1 rounded-md bg-muted/30">
+                      Move {currentMoveIndex + 1} of {moveHistory.length}
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 border rounded-md p-0.5">
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="h-7 w-7 p-0"
+                        variant="ghost"
+                        className="h-5 w-5 p-0 hover:bg-muted"
                         onClick={goBackMove}
                         disabled={currentMoveIndex < 0}
+                        title="Previous move"
                       >
                         <ChevronLeft className="h-3 w-3" />
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="h-7 w-7 p-0"
+                        variant="ghost"
+                        className="h-5 w-5 p-0 hover:bg-muted"
                         onClick={goForwardMove}
                         disabled={currentMoveIndex >= moveHistory.length - 1}
+                        title="Next move"
                       >
                         <ChevronRight className="h-3 w-3" />
                       </Button>

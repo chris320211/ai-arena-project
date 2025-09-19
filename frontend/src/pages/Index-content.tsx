@@ -91,29 +91,29 @@ const IndexContent = ({
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
           {/* Left Column - Game Board */}
-          <div className="xl:col-span-2 space-y-6">
+          <div className="xl:col-span-2 space-y-4">
             {/* Game Status */}
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                      <div className={`w-4 h-4 rounded-full ${
+                      <div className={`w-3 h-3 rounded-full ${
                         currentTurn === 'white' ? 'bg-white border-2 border-gray-800' : 'bg-gray-800'
                       }`} />
-                      <span className="font-medium">
+                      <span className="font-medium text-sm">
                         {currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1)} to move
                       </span>
                     </div>
-                    
+
                     {gameInProgress && (
-                      <Badge variant={isAIThinking ? "default" : "secondary"}>
+                      <Badge variant={isAIThinking ? "default" : "secondary"} className="text-xs">
                         {isAIThinking ? "AI Thinking..." : "Game Active"}
                       </Badge>
                     )}
                   </div>
-                  
-                  <div className="text-sm text-muted-foreground">
+
+                  <div className="text-xs text-muted-foreground">
                     Move #{Math.floor((position.length - 32) / 2) + 1}
                   </div>
                 </div>

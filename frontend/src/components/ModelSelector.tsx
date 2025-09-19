@@ -24,7 +24,7 @@ const AI_MODELS: AIModel[] = [
   {
     id: 'openai_gpt4o_mini',
     name: 'GPT-4o Mini',
-    description: 'OpenAI\'s efficient and capable chess AI',
+    description: 'Efficient and capable AI',
     strength: 2100,
     style: 'Analytical & Precise',
     icon: <Brain className="w-5 h-5" />,
@@ -32,8 +32,8 @@ const AI_MODELS: AIModel[] = [
   },
   {
     id: 'ollama_llama3',
-    name: 'Llama 3 (8B)',
-    description: 'Balanced reasoning and efficient general knowledge',
+    name: 'Llama 3 8B',
+    description: 'Balanced reasoning and efficiency',
     strength: 1150,
     style: 'Strategic & Versatile',
     icon: <Brain className="w-5 h-5" />,
@@ -42,7 +42,7 @@ const AI_MODELS: AIModel[] = [
   {
     id: 'ollama_phi35',
     name: 'Phi 3.5',
-    description: 'Lightweight but precise with strong math ability',
+    description: 'Lightweight with strong math',
     strength: 1200,
     style: 'Compact & Tactical',
     icon: <Target className="w-5 h-5" />,
@@ -51,7 +51,7 @@ const AI_MODELS: AIModel[] = [
   {
     id: 'random',
     name: 'Random AI',
-    description: 'Makes random legal moves for testing',
+    description: 'Random moves for testing',
     strength: 800,
     style: 'Unpredictable',
     icon: <Cpu className="w-5 h-5" />,
@@ -61,7 +61,7 @@ const AI_MODELS: AIModel[] = [
   {
     id: 'anthropic_claude',
     name: 'Claude 3.5 Sonnet',
-    description: 'Anthropic\'s most capable model with excellent reasoning',
+    description: 'Most capable with excellent reasoning',
     strength: 2300,
     style: 'Deep & Thoughtful',
     icon: <Sparkles className="w-5 h-5" />,
@@ -70,7 +70,7 @@ const AI_MODELS: AIModel[] = [
   {
     id: 'gemini_pro',
     name: 'Gemini 1.5 Pro',
-    description: 'Google\'s multimodal AI with strong analytical skills',
+    description: 'Multimodal with strong analytics',
     strength: 2200,
     style: 'Analytical & Creative',
     icon: <Brain className="w-5 h-5" />,
@@ -79,7 +79,7 @@ const AI_MODELS: AIModel[] = [
   {
     id: 'openai_gpt4o',
     name: 'GPT-4o',
-    description: 'OpenAI\'s flagship model with advanced reasoning',
+    description: 'Flagship with advanced reasoning',
     strength: 2400,
     style: 'Sophisticated & Strategic',
     icon: <Brain className="w-5 h-5" />,
@@ -89,7 +89,7 @@ const AI_MODELS: AIModel[] = [
   {
     id: 'custom_ai_1',
     name: 'Custom AI 1',
-    description: 'Custom AI provider via API',
+    description: 'Custom AI via API',
     strength: 1800,
     style: 'Custom Strategy',
     icon: <Zap className="w-5 h-5" />,
@@ -98,7 +98,7 @@ const AI_MODELS: AIModel[] = [
   {
     id: 'custom_ai_2',
     name: 'Custom AI 2',
-    description: 'Custom AI provider via API',
+    description: 'Custom AI via API',
     strength: 1800,
     style: 'Custom Strategy',
     icon: <Globe className="w-5 h-5" />,
@@ -107,7 +107,7 @@ const AI_MODELS: AIModel[] = [
   {
     id: 'custom_ai_3',
     name: 'Custom AI 3',
-    description: 'Custom AI provider via API',
+    description: 'Custom AI via API',
     strength: 1800,
     style: 'Custom Strategy',
     icon: <Target className="w-5 h-5" />,
@@ -226,43 +226,45 @@ const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress }: ModelSe
           </Button>
 
           {/* AI Model Options */}
-          {AI_MODELS.map(model => {
-            const isSelected = playerConfig[selectedSide] === model;
-            const isAlreadySelected = isModelAlreadySelected(model);
-            const isDisabled = gameInProgress || isAlreadySelected;
-            
-            return (
-            <Button
-              key={model.id}
-              variant={isSelected ? 'default' : 'outline'}
-              onClick={() => handlePlayerSelect(model)}
-              disabled={isDisabled}
-              className={cn(
-                "w-full justify-start p-4 h-auto",
-                isAlreadySelected && !isSelected && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <div className={cn(
-                "p-2 rounded-lg bg-gradient-to-r mr-3",
-                model.color
-              )}>
-                {model.icon}
-              </div>
-              <div className="text-left flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium">{model.name}</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {model.strength} ELO
-                  </Badge>
+          <div className="h-[25rem] overflow-y-auto overflow-x-hidden space-y-3 pr-3">
+            {AI_MODELS.map(model => {
+              const isSelected = playerConfig[selectedSide] === model;
+              const isAlreadySelected = isModelAlreadySelected(model);
+              const isDisabled = gameInProgress || isAlreadySelected;
+
+              return (
+              <Button
+                key={model.id}
+                variant={isSelected ? 'default' : 'outline'}
+                onClick={() => handlePlayerSelect(model)}
+                disabled={isDisabled}
+                className={cn(
+                  "w-full justify-start p-4 h-auto mr-2",
+                  isAlreadySelected && !isSelected && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <div className={cn(
+                  "p-2 rounded-lg bg-gradient-to-r mr-3",
+                  model.color
+                )}>
+                  {model.icon}
                 </div>
-                <div className="text-xs opacity-75 mb-1">{model.description}</div>
-                <div className="text-xs">
-                  <span className="text-accent font-medium">{model.style}</span> Style
+                <div className="text-left flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium">{model.name}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {model.strength} ELO
+                    </Badge>
+                  </div>
+                  <div className="text-xs opacity-75 mb-1">{model.description}</div>
+                  <div className="text-xs">
+                    <span className="text-accent font-medium">{model.style}</span> Style
+                  </div>
                 </div>
-              </div>
-            </Button>
-            );
-          })}
+              </Button>
+              );
+            })}
+          </div>
         </div>
       </CardContent>
     </Card>
