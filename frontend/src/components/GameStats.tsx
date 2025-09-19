@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trophy, Target, Clock, TrendingUp, Medal, Crown, BarChart3, Zap, Users, Activity } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
@@ -50,9 +52,67 @@ interface GameStatsProps {
 }
 
 const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameStatsProps) => {
+  const [selectedModel1, setSelectedModel1] = useState<string>('');
+  const [selectedModel2, setSelectedModel2] = useState<string>('');
+
   const getModelById = (id: string) => {
     return aiModels.find(model => model.id === id);
   };
+
+  // Handle model selection with validation
+  const handleModel1Change = (value: string) => {
+    setSelectedModel1(value);
+    // If the same model is selected for both, clear the second selection
+    if (value === selectedModel2 && value !== '') {
+      setSelectedModel2('');
+    }
+  };
+
+  const handleModel2Change = (value: string) => {
+    setSelectedModel2(value);
+    // If the same model is selected for both, clear the first selection
+    if (value === selectedModel1 && value !== '') {
+      setSelectedModel1('');
+    }
+  };
+
+  // Filter data based on selected models
+  const getFilteredData = () => {
+    // If no models are selected, show no data
+    if (!selectedModel1 && !selectedModel2) {
+      return { filteredGames: [], filteredStats: [] };
+    }
+
+    let filteredGames = recentGames;
+    let filteredStats = modelStats;
+
+    // If both specific models are selected, show head-to-head comparison
+    if (selectedModel1 && selectedModel2) {
+      filteredGames = recentGames.filter(game =>
+        (game.white_model === selectedModel1 && game.black_model === selectedModel2) ||
+        (game.white_model === selectedModel2 && game.black_model === selectedModel1)
+      );
+      filteredStats = modelStats.filter(stat =>
+        stat.model_id === selectedModel1 || stat.model_id === selectedModel2
+      );
+    } else if (selectedModel1) {
+      // Show games involving the first selected model
+      filteredGames = recentGames.filter(game =>
+        game.white_model === selectedModel1 || game.black_model === selectedModel1
+      );
+      filteredStats = modelStats.filter(stat => stat.model_id === selectedModel1);
+    } else if (selectedModel2) {
+      // Show games involving the second selected model
+      filteredGames = recentGames.filter(game =>
+        game.white_model === selectedModel2 || game.black_model === selectedModel2
+      );
+      filteredStats = modelStats.filter(stat => stat.model_id === selectedModel2);
+    }
+
+    return { filteredGames, filteredStats };
+  };
+
+  const { filteredGames, filteredStats } = getFilteredData();
 
   const getWinRateColor = (winRate: number) => {
     if (winRate >= 70) return 'text-green-500';
@@ -85,7 +145,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
   };
 
   // Sort models by rating
-  const sortedStats = [...modelStats].sort((a, b) => b.rating - a.rating);
+  const sortedStats = [...filteredStats].sort((a, b) => b.rating - a.rating);
 
   // Prepare chart data
   const performanceChartData = sortedStats.map((stats) => {
@@ -102,23 +162,23 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
   });
 
   const gameResultsData = [
-    { name: 'White Wins', value: recentGames.filter(g => g.winner === 'white').length, color: '#ffffff' },
-    { name: 'Black Wins', value: recentGames.filter(g => g.winner === 'black').length, color: '#000000' },
-    { name: 'Draws', value: recentGames.filter(g => g.winner === null).length, color: '#888888' }
+    { name: 'White Wins', value: filteredGames.filter(g => g.winner === 'white').length, color: '#ffffff' },
+    { name: 'Black Wins', value: filteredGames.filter(g => g.winner === 'black').length, color: '#000000' },
+    { name: 'Draws', value: filteredGames.filter(g => g.winner === null).length, color: '#888888' }
   ];
 
   const endReasonsData = [
-    { name: 'Checkmate', value: recentGames.filter(g => g.end_reason === 'checkmate').length, color: '#ef4444' },
-    { name: 'Resignation', value: recentGames.filter(g => g.end_reason === 'resignation').length, color: '#f97316' },
-    { name: 'Stalemate', value: recentGames.filter(g => g.end_reason === 'stalemate').length, color: '#eab308' },
-    { name: 'Timeout', value: recentGames.filter(g => g.end_reason === 'timeout').length, color: '#6366f1' }
+    { name: 'Checkmate', value: filteredGames.filter(g => g.end_reason === 'checkmate').length, color: '#ef4444' },
+    { name: 'Resignation', value: filteredGames.filter(g => g.end_reason === 'resignation').length, color: '#f97316' },
+    { name: 'Stalemate', value: filteredGames.filter(g => g.end_reason === 'stalemate').length, color: '#eab308' },
+    { name: 'Timeout', value: filteredGames.filter(g => g.end_reason === 'timeout').length, color: '#6366f1' }
   ].filter(item => item.value > 0);
 
   // Model matchup matrix
   const createMatchupMatrix = () => {
     const matrix: { [white: string]: { [black: string]: { wins: number, losses: number, draws: number } } } = {};
-    
-    recentGames.forEach(game => {
+
+    filteredGames.forEach(game => {
       const whiteModel = getModelById(game.white_model)?.name || game.white_model;
       const blackModel = getModelById(game.black_model)?.name || game.black_model;
       
@@ -178,16 +238,102 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
   })() : [];
 
   return (
-    <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="grid w-full grid-cols-5 h-auto p-1">
-        <TabsTrigger value="overview" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Overview</TabsTrigger>
-        <TabsTrigger value="performance" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Perf</TabsTrigger>
-        <TabsTrigger value="trends" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">ELO</TabsTrigger>
-        <TabsTrigger value="matchups" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Match</TabsTrigger>
-        <TabsTrigger value="games" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Games</TabsTrigger>
-      </TabsList>
+    <div className="w-full space-y-4">
+      {/* Model Comparison Selectors */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-accent" />
+              <h3 className="font-semibold">Compare Models</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">First Model</label>
+                <Select value={selectedModel1} onValueChange={handleModel1Change}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      value="human"
+                      disabled={selectedModel2 === 'human'}
+                    >
+                      Human Player
+                    </SelectItem>
+                    {aiModels.map(model => (
+                      <SelectItem
+                        key={model.id}
+                        value={model.id}
+                        disabled={selectedModel2 === model.id}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={cn("w-3 h-3 rounded bg-gradient-to-r", model.color)}></div>
+                          {model.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Second Model</label>
+                <Select value={selectedModel2} onValueChange={handleModel2Change}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      value="human"
+                      disabled={selectedModel1 === 'human'}
+                    >
+                      Human Player
+                    </SelectItem>
+                    {aiModels.map(model => (
+                      <SelectItem
+                        key={model.id}
+                        value={model.id}
+                        disabled={selectedModel1 === model.id}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={cn("w-3 h-3 rounded bg-gradient-to-r", model.color)}></div>
+                          {model.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Select models to compare their performance. Choose one model to see its overall stats, or select both for head-to-head comparison. Leave empty to see no data.
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-5 h-auto p-1">
+          <TabsTrigger value="overview" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Overview</TabsTrigger>
+          <TabsTrigger value="performance" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Perf</TabsTrigger>
+          <TabsTrigger value="trends" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">ELO</TabsTrigger>
+          <TabsTrigger value="matchups" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Match</TabsTrigger>
+          <TabsTrigger value="games" className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2 py-1.5 h-auto">Games</TabsTrigger>
+        </TabsList>
       
       <TabsContent value="overview" className="mt-4 space-y-4">
+        {!selectedModel1 && !selectedModel2 ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-muted-foreground">
+                <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-medium mb-2">Select Models to Compare</h3>
+                <p className="text-sm">Choose one or more models from the dropdowns above to view their statistics and performance data.</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+        <>
         {/* Key Metrics Dashboard */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
           <Card>
@@ -197,7 +343,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                   <Users className="w-3 h-3 text-blue-500 flex-shrink-0 mt-0.5" />
                   <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Models</div>
                 </div>
-                <div className="text-lg md:text-xl font-bold text-center">{modelStats.length}</div>
+                <div className="text-lg md:text-xl font-bold text-center">{filteredStats.length}</div>
               </div>
             </CardContent>
           </Card>
@@ -208,7 +354,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                   <Activity className="w-3 h-3 text-green-500 flex-shrink-0 mt-0.5" />
                   <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Games</div>
                 </div>
-                <div className="text-lg md:text-xl font-bold text-center">{recentGames.length}</div>
+                <div className="text-lg md:text-xl font-bold text-center">{filteredGames.length}</div>
               </div>
             </CardContent>
           </Card>
@@ -219,7 +365,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                   <Crown className="w-3 h-3 text-yellow-500 flex-shrink-0 mt-0.5" />
                   <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Mates</div>
                 </div>
-                <div className="text-lg md:text-xl font-bold text-center">{recentGames.filter(g => g.end_reason === 'checkmate').length}</div>
+                <div className="text-lg md:text-xl font-bold text-center">{filteredGames.filter(g => g.end_reason === 'checkmate').length}</div>
               </div>
             </CardContent>
           </Card>
@@ -230,7 +376,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                   <Clock className="w-3 h-3 text-purple-500 flex-shrink-0 mt-0.5" />
                   <div className="text-[9px] md:text-[10px] text-muted-foreground leading-tight">Duration</div>
                 </div>
-                <div className="text-lg md:text-xl font-bold text-center">{Math.round(recentGames.reduce((acc, g) => acc + g.duration, 0) / recentGames.length / 60) || 0}m</div>
+                <div className="text-lg md:text-xl font-bold text-center">{Math.round(filteredGames.reduce((acc, g) => acc + g.duration, 0) / filteredGames.length / 60) || 0}m</div>
               </div>
             </CardContent>
           </Card>
@@ -375,9 +521,23 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
             </div>
           </CardContent>
         </Card>
+        </>
+        )}
       </TabsContent>
 
       <TabsContent value="performance" className="mt-4 space-y-4">
+        {!selectedModel1 && !selectedModel2 ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-muted-foreground">
+                <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-medium mb-2">Select Models to View Performance</h3>
+                <p className="text-sm">Choose models to see their ELO ratings, win rates, and detailed performance metrics.</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+        <>
         {/* ELO Ratings Chart */}
         <Card>
           <CardHeader>
@@ -489,9 +649,23 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
             );
           })}
         </div>
+        </>
+        )}
       </TabsContent>
 
       <TabsContent value="trends" className="mt-4 space-y-4">
+        {!selectedModel1 && !selectedModel2 ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-muted-foreground">
+                <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-medium mb-2">Select Models to View Trends</h3>
+                <p className="text-sm">Choose models to see their ELO rating trends and performance history over time.</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+        <>
         {/* ELO Rating Trends Chart */}
         <Card>
           <CardHeader>
@@ -516,7 +690,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                       />
                       <YAxis label={{ value: 'ELO Rating', angle: -90, position: 'insideLeft' }} />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      {modelStats.map((stat, index) => {
+                      {filteredStats.map((stat, index) => {
                         const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
                         return (
                           <Line 
@@ -592,6 +766,8 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
             </div>
           </CardContent>
         </Card>
+        </>
+        )}
       </TabsContent>
 
       <TabsContent value="matchups" className="mt-4">
@@ -667,7 +843,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-              {recentGames.slice(0, 20).map((game, index) => {
+              {filteredGames.slice(0, 20).map((game, index) => {
                 const whiteModel = getModelById(game.white_model);
                 const blackModel = getModelById(game.black_model);
                 const gameDate = new Date(game.timestamp).toLocaleDateString();
@@ -677,7 +853,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                   <div key={game._id} className="group relative p-4 rounded-xl border border-border/50 hover:border-border hover:bg-muted/30 transition-all duration-200">
                     {/* Game number badge */}
                     <div className="absolute top-2 right-2 text-xs text-muted-foreground font-mono">
-                      #{recentGames.length - index}
+                      #{filteredGames.length - index}
                     </div>
                     
                     {/* Main game info */}
@@ -753,7 +929,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                 );
               })}
               
-              {recentGames.length === 0 && (
+              {filteredGames.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No games played yet. Start a game to see statistics!</p>
@@ -764,6 +940,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
         </Card>
       </TabsContent>
     </Tabs>
+    </div>
   );
 };
 
