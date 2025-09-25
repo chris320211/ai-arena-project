@@ -1,102 +1,168 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingUp } from "lucide-react";
+import { eloService } from "@/services/eloService";
+import { useEffect, useState } from "react";
+import { AI_MODELS } from "@/components/ModelSelector";
 
-const data = [
-  { time: "00:00", AlphaChess: 2847, DeepMind: 2802, Stockfish: 2756, GPTChess: 2689, LeelaZero: 2634 },
-  { time: "04:00", AlphaChess: 2851, DeepMind: 2798, Stockfish: 2761, GPTChess: 2692, LeelaZero: 2628 },
-  { time: "08:00", AlphaChess: 2849, DeepMind: 2805, Stockfish: 2759, GPTChess: 2688, LeelaZero: 2635 },
-  { time: "12:00", AlphaChess: 2853, DeepMind: 2801, Stockfish: 2754, GPTChess: 2695, LeelaZero: 2631 },
-  { time: "16:00", AlphaChess: 2856, DeepMind: 2807, Stockfish: 2752, GPTChess: 2691, LeelaZero: 2638 },
-  { time: "20:00", AlphaChess: 2858, DeepMind: 2803, Stockfish: 2748, GPTChess: 2697, LeelaZero: 2642 },
-  { time: "24:00", AlphaChess: 2860, DeepMind: 2809, Stockfish: 2745, GPTChess: 2693, LeelaZero: 2639 }
+interface ChartDataPoint {
+  timestamp: number;
+  time: string;
+  [key: string]: number | string;
+}
+
+const colors = [
+  "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444",
+  "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"
 ];
 
-const colors = {
-  AlphaChess: "#8b5cf6",
-  DeepMind: "#06b6d4",
-  Stockfish: "#10b981",
-  GPTChess: "#f59e0b",
-  LeelaZero: "#ef4444"
-};
-
 export const PerformanceChart = () => {
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [modelNames, setModelNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    const updateChartData = () => {
+      const history = eloService.getEloHistory(100);
+      const ratings = eloService.getRatings();
+
+      // Get all unique model IDs that have played games
+      const playedModelIds = ratings.filter(r => r.gamesPlayed > 0).map(r => r.modelId);
+      const names = playedModelIds.map(id => eloService.getModelName(id).replace(/\s+/g, ''));
+      setModelNames(names);
+
+      if (history.length === 0) {
+        // No history data, show initial ratings
+        const initialData: ChartDataPoint = {
+          timestamp: Date.now(),
+          time: "Start",
+        };
+
+        playedModelIds.forEach((modelId, index) => {
+          const rating = ratings.find(r => r.modelId === modelId);
+          initialData[names[index]] = rating ? rating.rating : 1000;
+        });
+
+        setChartData([initialData]);
+        return;
+      }
+
+      // Group history by timestamp to create chart data points
+      const timestampGroups = new Map<number, Map<string, number>>();
+
+      history.forEach(entry => {
+        if (!playedModelIds.includes(entry.modelId)) return;
+
+        const roundedTimestamp = Math.floor(entry.timestamp / (5 * 60 * 1000)) * (5 * 60 * 1000); // Round to 5-minute intervals
+
+        if (!timestampGroups.has(roundedTimestamp)) {
+          timestampGroups.set(roundedTimestamp, new Map());
+        }
+
+        const modelName = eloService.getModelName(entry.modelId).replace(/\s+/g, '');
+        timestampGroups.get(roundedTimestamp)!.set(modelName, entry.rating);
+      });
+
+      // Convert to chart data format
+      const data: ChartDataPoint[] = [];
+      const sortedTimestamps = Array.from(timestampGroups.keys()).sort();
+
+      // Track last known rating for each model to fill gaps
+      const lastKnownRatings = new Map<string, number>();
+      playedModelIds.forEach(modelId => {
+        const rating = ratings.find(r => r.modelId === modelId);
+        const modelName = eloService.getModelName(modelId).replace(/\s+/g, '');
+        lastKnownRatings.set(modelName, rating ? rating.rating : 1000);
+      });
+
+      sortedTimestamps.forEach(timestamp => {
+        const dataPoint: ChartDataPoint = {
+          timestamp,
+          time: new Date(timestamp).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        };
+
+        const ratingsAtTimestamp = timestampGroups.get(timestamp)!;
+
+        names.forEach(modelName => {
+          if (ratingsAtTimestamp.has(modelName)) {
+            const rating = ratingsAtTimestamp.get(modelName)!;
+            dataPoint[modelName] = rating;
+            lastKnownRatings.set(modelName, rating);
+          } else {
+            // Use last known rating
+            dataPoint[modelName] = lastKnownRatings.get(modelName) || 1000;
+          }
+        });
+
+        data.push(dataPoint);
+      });
+
+      // Limit to last 20 data points for readability
+      setChartData(data.slice(-20));
+    };
+
+    updateChartData();
+
+    // Update chart every 10 seconds
+    const interval = setInterval(updateChartData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5" />
-          ELO Rating Trends (24h)
+          ELO Rating Trends
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-            <XAxis
-              dataKey="time"
-              axisLine={false}
-              tickLine={false}
-              className="text-xs"
-            />
-            <YAxis
-              domain={['dataMin - 20', 'dataMax + 20']}
-              axisLine={false}
-              tickLine={false}
-              className="text-xs"
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px',
-                color: 'hsl(var(--foreground))'
-              }}
-            />
-            <Legend />
+        {chartData.length === 0 || modelNames.length === 0 ? (
+          <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+            No ELO history data available. Play some games to see trends!
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis
+                dataKey="time"
+                axisLine={false}
+                tickLine={false}
+                className="text-xs"
+              />
+              <YAxis
+                domain={['dataMin - 50', 'dataMax + 50']}
+                axisLine={false}
+                tickLine={false}
+                className="text-xs"
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  color: 'hsl(var(--foreground))'
+                }}
+              />
+              <Legend />
 
-            <Line
-              type="monotone"
-              dataKey="AlphaChess"
-              stroke={colors.AlphaChess}
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="DeepMind"
-              stroke={colors.DeepMind}
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="Stockfish"
-              stroke={colors.Stockfish}
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="GPTChess"
-              stroke={colors.GPTChess}
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="LeelaZero"
-              stroke={colors.LeelaZero}
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+              {modelNames.map((modelName, index) => (
+                <Line
+                  key={modelName}
+                  type="monotone"
+                  dataKey={modelName}
+                  stroke={colors[index % colors.length]}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   );

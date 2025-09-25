@@ -2,6 +2,7 @@ import { StatsCards } from "@/components/dashboard/StatsCards";
 import { Leaderboard } from "@/components/dashboard/Leaderboard";
 import { RecentMatches } from "@/components/dashboard/RecentMatches";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
+import { EloTestControls } from "@/components/EloTestControls";
 import { Button } from "@/components/ui/button";
 import { Trophy, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -61,6 +62,10 @@ const StatsDashboard = () => {
               <section>
                 <h2 className="mb-6 text-xl font-semibold text-foreground">AI Model Rankings</h2>
                 <Leaderboard />
+              </section>
+
+              <section>
+                <EloTestControls />
               </section>
             </div>
           </div>

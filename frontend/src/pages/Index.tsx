@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import { eloService } from '@/services/eloService';
 
 import ChessBoard, { ChessPiece, ChessMove } from '@/components/ChessBoard';
 import ModelSelector, { AIModel, PlayerConfig, AI_MODELS } from '@/components/ModelSelector';
@@ -220,12 +221,14 @@ const Index = () => {
 
       // Check game status
       if (data.status?.checkmate) {
+        const winner = data.turn === 'white' ? 'black' : 'white';
         toast({
           title: "Checkmate!",
-          description: `${data.turn === 'white' ? 'Black' : 'White'} wins!`,
+          description: `${winner === 'white' ? 'White' : 'Black'} wins!`,
           variant: "default"
         });
         setGameInProgress(false);
+        recordGameResult(winner);
       } else if (data.status?.check) {
         toast({
           title: "Check!",
@@ -239,6 +242,7 @@ const Index = () => {
           variant: "default"
         });
         setGameInProgress(false);
+        recordGameResult('draw');
       }
 
     } catch (error) {
@@ -520,12 +524,14 @@ const Index = () => {
       saveToHistory(frontendPosition, data.turn, moveObj);
       
       if (data.status?.checkmate) {
+        const winner = data.turn === 'white' ? 'black' : 'white';
         toast({
           title: "Checkmate!",
-          description: `${data.turn === 'white' ? 'Black' : 'White'} wins!`,
+          description: `${winner === 'white' ? 'White' : 'Black'} wins!`,
           variant: "default"
         });
         setGameInProgress(false);
+        recordGameResult(winner);
       } else if (data.status?.check) {
         toast({
           title: "Check!",
@@ -539,6 +545,7 @@ const Index = () => {
           variant: "default"
         });
         setGameInProgress(false);
+        recordGameResult('draw');
       }
       
       return true;
@@ -601,6 +608,34 @@ const Index = () => {
   const getCurrentAIModel = (): AIModel | null => {
     const currentPlayer = getCurrentPlayer();
     return currentPlayer !== 'human' && typeof currentPlayer === 'object' ? currentPlayer : null;
+  };
+
+  // Record game result in ELO system
+  const recordGameResult = (winner: 'white' | 'black' | 'draw') => {
+    const whitePlayer = playerConfig.white;
+    const blackPlayer = playerConfig.black;
+
+    // Only record games between AI models (skip human games for now)
+    if (whitePlayer !== 'human' && blackPlayer !== 'human') {
+      try {
+        const result = eloService.recordGameResult(
+          whitePlayer.id,
+          blackPlayer.id,
+          winner
+        );
+
+        const whiteChange = result.whiteRatingAfter - result.whiteRatingBefore;
+        const blackChange = result.blackRatingAfter - result.blackRatingBefore;
+
+        toast({
+          title: "ELO Updated",
+          description: `${whitePlayer.name}: ${whiteChange > 0 ? '+' : ''}${whiteChange}, ${blackPlayer.name}: ${blackChange > 0 ? '+' : ''}${blackChange}`,
+          variant: "default"
+        });
+      } catch (error) {
+        console.error('Error recording ELO result:', error);
+      }
+    }
   };
 
   // Move navigation functions

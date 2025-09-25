@@ -1,59 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Crown, Medal, Award } from "lucide-react";
+import { eloService } from "@/services/eloService";
+import { useEffect, useState } from "react";
 
-const models = [
-  {
-    rank: 1,
-    name: "AlphaChess Pro",
-    elo: 2847,
-    wins: 1203,
-    losses: 127,
-    draws: 89,
-    winRate: 94.8,
-    trend: "up"
-  },
-  {
-    rank: 2,
-    name: "DeepMind Chess",
-    elo: 2802,
-    wins: 987,
-    losses: 156,
-    draws: 102,
-    winRate: 89.2,
-    trend: "up"
-  },
-  {
-    rank: 3,
-    name: "Stockfish Neural",
-    elo: 2756,
-    wins: 834,
-    losses: 189,
-    draws: 156,
-    winRate: 84.1,
-    trend: "down"
-  },
-  {
-    rank: 4,
-    name: "GPT-Chess",
-    elo: 2689,
-    wins: 723,
-    losses: 234,
-    draws: 198,
-    winRate: 78.6,
-    trend: "up"
-  },
-  {
-    rank: 5,
-    name: "LeelaZero",
-    elo: 2634,
-    wins: 645,
-    losses: 278,
-    draws: 223,
-    winRate: 72.4,
-    trend: "stable"
-  }
-];
+interface LeaderboardModel {
+  rank: number;
+  name: string;
+  elo: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
+  trend: "up" | "down" | "stable";
+}
 
 const getRankIcon = (rank: number) => {
   switch (rank) {
@@ -69,49 +29,80 @@ const getRankIcon = (rank: number) => {
 };
 
 export const Leaderboard = () => {
+  const [models, setModels] = useState<LeaderboardModel[]>([]);
+
+  useEffect(() => {
+    const updateLeaderboard = () => {
+      const ratings = eloService.getRatings();
+      const leaderboardData = ratings.map((rating, index) => ({
+        rank: index + 1,
+        name: eloService.getModelName(rating.modelId),
+        elo: rating.rating,
+        wins: rating.wins,
+        losses: rating.losses,
+        draws: rating.draws,
+        winRate: rating.gamesPlayed > 0 ? Math.round((rating.wins / rating.gamesPlayed) * 100) : 0,
+        trend: "stable" as const // We'll implement trend calculation later based on recent games
+      }));
+      setModels(leaderboardData);
+    };
+
+    updateLeaderboard();
+
+    // Update leaderboard every 5 seconds to reflect new game results
+    const interval = setInterval(updateLeaderboard, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Crown className="h-5 w-5 text-gold" />
-          Top Performers
+          AI Model Rankings
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {models.map((model) => (
-          <div
-            key={model.rank}
-            className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/50"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center">
-                {getRankIcon(model.rank)}
-              </div>
-              <div>
-                <p className="font-medium text-foreground">{model.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {model.wins}W • {model.losses}L • {model.draws}D
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="font-bold text-foreground">{model.elo}</p>
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={model.winRate >= 90 ? "default" : "secondary"}
-                  className="text-xs"
-                >
-                  {model.winRate}%
-                </Badge>
-                <div className={`h-2 w-2 rounded-full ${
-                  model.trend === 'up' ? 'bg-accent' :
-                  model.trend === 'down' ? 'bg-destructive' :
-                  'bg-muted-foreground'
-                }`} />
-              </div>
-            </div>
+        {models.length === 0 ? (
+          <div className="text-center text-muted-foreground py-4">
+            No ratings data available
           </div>
-        ))}
+        ) : (
+          models.map((model) => (
+            <div
+              key={model.rank}
+              className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center">
+                  {getRankIcon(model.rank)}
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">{model.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {model.wins}W • {model.losses}L • {model.draws}D
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-foreground">{model.elo}</p>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={model.winRate >= 70 ? "default" : "secondary"}
+                    className="text-xs"
+                  >
+                    {model.winRate}%
+                  </Badge>
+                  <div className={`h-2 w-2 rounded-full ${
+                    model.trend === 'up' ? 'bg-accent' :
+                    model.trend === 'down' ? 'bg-destructive' :
+                    'bg-muted-foreground'
+                  }`} />
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </CardContent>
     </Card>
   );
