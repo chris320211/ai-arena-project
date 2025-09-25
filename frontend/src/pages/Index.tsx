@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { Link } from 'react-router-dom';
 
 import ChessBoard, { ChessPiece, ChessMove } from '@/components/ChessBoard';
 import ModelSelector, { AIModel, PlayerConfig, AI_MODELS } from '@/components/ModelSelector';
@@ -653,6 +654,16 @@ const Index = () => {
             </div>
             
             <div className="flex items-center gap-2">
+              <Link to="/stats">
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  Stats
+                </Button>
+              </Link>
+
               <Button
                 onClick={startNewGame}
                 disabled={gameInProgress}
@@ -661,7 +672,7 @@ const Index = () => {
                 <Play className="w-4 h-4" />
                 Start Game
               </Button>
-              
+
               <Button
                 onClick={resetGame}
                 variant="outline"
