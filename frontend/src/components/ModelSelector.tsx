@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, User, Target, Cpu, Sparkles, Zap, Globe } from 'lucide-react';
+import { Brain, User, Target, Cpu, Sparkles, Zap, Globe, Play, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type AIModel = {
@@ -119,9 +119,11 @@ interface ModelSelectorProps {
   playerConfig: PlayerConfig;
   onConfigChange: (config: PlayerConfig) => void;
   gameInProgress: boolean;
+  onStartGame?: () => void;
+  onResetGame?: () => void;
 }
 
-const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress }: ModelSelectorProps) => {
+const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress, onStartGame, onResetGame }: ModelSelectorProps) => {
   const [selectedSide, setSelectedSide] = useState<'white' | 'black'>('white');
 
   const handlePlayerSelect = (player: 'human' | AIModel) => {
@@ -208,6 +210,19 @@ const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress }: ModelSe
             );
           })}
         </div>
+
+        {/* Start Game Button */}
+        {onStartGame && (
+          <Button
+            onClick={onStartGame}
+            disabled={gameInProgress}
+            className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+            size="lg"
+          >
+            <Play className="w-4 h-4" />
+            Start New Game
+          </Button>
+        )}
 
         {/* Player Options */}
         <div className="space-y-3">

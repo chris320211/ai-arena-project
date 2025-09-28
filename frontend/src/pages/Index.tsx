@@ -129,6 +129,7 @@ const Index = () => {
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [aiResponse, setAIResponse] = useState<AIResponse | null>(null);
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   // Game statistics - now loaded from API
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
@@ -228,6 +229,7 @@ const Index = () => {
           variant: "default"
         });
         setGameInProgress(false);
+        setShowAnalysis(false);
         recordGameResult(winner);
       } else if (data.status?.check) {
         toast({
@@ -242,6 +244,7 @@ const Index = () => {
           variant: "default"
         });
         setGameInProgress(false);
+        setShowAnalysis(false);
         recordGameResult('draw');
       }
 
@@ -391,7 +394,8 @@ const Index = () => {
       setThinkingSteps([]);
       setMoveHistory([]);
       setCurrentMoveIndex(-1);
-      
+      setShowAnalysis(true);
+
       toast({
         title: "New Game Started",
         description: "Good luck!",
@@ -424,6 +428,7 @@ const Index = () => {
       setThinkingSteps([]);
       setMoveHistory([]);
       setCurrentMoveIndex(-1);
+      setShowAnalysis(false);
     } catch (error) {
       console.error('Error resetting game:', error);
       toast({
@@ -531,6 +536,7 @@ const Index = () => {
           variant: "default"
         });
         setGameInProgress(false);
+        setShowAnalysis(false);
         recordGameResult(winner);
       } else if (data.status?.check) {
         toast({
@@ -545,6 +551,7 @@ const Index = () => {
           variant: "default"
         });
         setGameInProgress(false);
+        setShowAnalysis(false);
         recordGameResult('draw');
       }
       
@@ -687,7 +694,7 @@ const Index = () => {
                 AI vs AI Battles
               </Badge>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Link to="/stats">
                 <Button
@@ -698,24 +705,6 @@ const Index = () => {
                   Stats
                 </Button>
               </Link>
-
-              <Button
-                onClick={startNewGame}
-                disabled={gameInProgress}
-                className="flex items-center gap-2"
-              >
-                <Play className="w-4 h-4" />
-                Start Game
-              </Button>
-
-              <Button
-                onClick={resetGame}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Reset
-              </Button>
             </div>
           </div>
         </div>
@@ -785,7 +774,7 @@ const Index = () => {
 
             {/* Chess Board */}
             <div className="flex justify-center">
-              <div className="max-w-2xl w-full">
+              <div className="max-w-3xl w-full">
                 <ChessBoard
                   position={position}
                   onMove={handleMove}
@@ -807,15 +796,41 @@ const Index = () => {
                 <TabsTrigger value="setup">Setup</TabsTrigger>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="setup" className="mt-4">
-                <ModelSelector
-                  playerConfig={playerConfig}
-                  onConfigChange={setPlayerConfig}
-                  gameInProgress={gameInProgress}
-                />
+                <div className="relative overflow-hidden">
+                  <div
+                    className={`transition-all duration-700 ease-in-out transform ${
+                      showAnalysis
+                        ? '-translate-x-full opacity-0 absolute inset-0'
+                        : 'translate-x-0 opacity-100'
+                    }`}
+                  >
+                    <ModelSelector
+                      playerConfig={playerConfig}
+                      onConfigChange={setPlayerConfig}
+                      gameInProgress={gameInProgress}
+                      onStartGame={startNewGame}
+                    />
+                  </div>
+
+                  <div
+                    className={`transition-all duration-700 ease-in-out transform ${
+                      showAnalysis
+                        ? 'translate-x-0 opacity-100'
+                        : 'translate-x-full opacity-0 absolute inset-0'
+                    }`}
+                  >
+                    <ThinkingProcess
+                      aiResponse={aiResponse}
+                      isThinking={isAIThinking}
+                      currentModel={getCurrentAIModel()}
+                      thinkingSteps={thinkingSteps}
+                    />
+                  </div>
+                </div>
               </TabsContent>
-              
+
               <TabsContent value="analysis" className="mt-4">
                 <ThinkingProcess
                   aiResponse={aiResponse}
@@ -824,7 +839,7 @@ const Index = () => {
                   thinkingSteps={thinkingSteps}
                 />
               </TabsContent>
-              
+
             </Tabs>
           </div>
         </div>
