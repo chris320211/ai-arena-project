@@ -803,10 +803,9 @@ const Index = () => {
           {/* Right Column - Controls and Analysis */}
           <div className="space-y-6">
             <Tabs defaultValue="setup" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="setup">Setup</TabsTrigger>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
-                <TabsTrigger value="stats">Stats</TabsTrigger>
               </TabsList>
               
               <TabsContent value="setup" className="mt-4">
@@ -826,16 +825,6 @@ const Index = () => {
                 />
               </TabsContent>
               
-              <TabsContent value="stats" className="mt-4">
-                <div className="max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
-                  <GameStats
-                    modelStats={modelStats}
-                    recentGames={gameResults}
-                    aiModels={AI_MODELS}
-                    eloHistory={eloHistory}
-                  />
-                </div>
-              </TabsContent>
             </Tabs>
           </div>
         </div>
