@@ -244,11 +244,14 @@ const Index = () => {
 
     } catch (error) {
       console.error('Error triggering AI move:', error);
-      toast({
-        title: "AI Error",
-        description: "Failed to get AI move",
-        variant: "destructive"
-      });
+      // Only show error if it's not an abort error
+      if (error instanceof Error && error.name !== 'AbortError') {
+        toast({
+          title: "AI Error",
+          description: "Failed to get AI move",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsAIThinking(false);
     }
@@ -289,7 +292,7 @@ const Index = () => {
 
   const handleSquareClick = useCallback(async (square: string) => {
     if (isAIThinking || !gameInProgress) return;
-    
+
     if (isAITurn()) {
       toast({
         title: "AI Turn",
@@ -776,16 +779,6 @@ const Index = () => {
                   thinkingSteps={thinkingSteps}
                   moveHistory={moveHistory}
                   onResetGame={resetGame}
-                  currentMoveIndex={currentMoveIndex}
-                  onMoveSelect={(index) => {
-                    if (index >= 0 && index < moveHistory.length) {
-                      const selectedMove = moveHistory[index];
-                      setPosition(selectedMove.position);
-                      setCurrentTurn(selectedMove.turn);
-                      setLastMove(selectedMove.move);
-                      setCurrentMoveIndex(index);
-                    }
-                  }}
                 />
               </div>
             </div>
