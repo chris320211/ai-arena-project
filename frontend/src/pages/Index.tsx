@@ -118,6 +118,7 @@ const Index = () => {
   const [currentTurn, setCurrentTurn] = useState<'white' | 'black'>('white');
   const [gameInProgress, setGameInProgress] = useState(false);
   const [lastMove, setLastMove] = useState<ChessMove | null>(null);
+  const [gameKey, setGameKey] = useState(0); // Force re-init on new game
   const [moveHistory, setMoveHistory] = useState<{position: ChessPiece[], turn: 'white' | 'black', move: ChessMove | null}[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   
@@ -130,6 +131,12 @@ const Index = () => {
   const [aiResponse, setAIResponse] = useState<AIResponse | null>(null);
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
   const [showAnalysis, setShowAnalysis] = useState(false);
+
+  // Reset move history when game key changes
+  useEffect(() => {
+    setMoveHistory([]);
+    setCurrentMoveIndex(-1);
+  }, [gameKey]);
 
   // Game statistics - now loaded from API
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
@@ -146,22 +153,13 @@ const Index = () => {
 
   // Trigger AI move using backend
   const triggerAIMove = useCallback(async () => {
-    console.log('triggerAIMove called with conditions:', { gameInProgress, isAITurn: isAITurn(), isAIThinking });
-    
     if (!gameInProgress || !isAITurn() || isAIThinking) {
-      console.log('triggerAIMove early return due to conditions:', {
-        gameInProgress,
-        isAITurn: isAITurn(),
-        isAIThinking,
-        failing: !gameInProgress ? 'gameInProgress' : !isAITurn() ? 'isAITurn' : 'isAIThinking'
-      });
       return;
     }
 
-    console.log('Setting AI thinking to true');
     setIsAIThinking(true);
     setThinkingSteps([]);
-    
+
     // Add thinking step
     setThinkingSteps([{
       id: '1',
@@ -170,12 +168,11 @@ const Index = () => {
       timestamp: Date.now()
     }]);
 
-    console.log('Making API call to /ai-step');
     try {
       // Add 45 second timeout to prevent hanging (accounting for 10s delay + API time)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 45000);
-      
+
       const response = await fetch('http://localhost:8001/ai-step', {
         method: 'POST',
         headers: {
@@ -183,17 +180,14 @@ const Index = () => {
         },
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        console.log('AI API response not ok:', response.status, response.statusText, response);
         throw new Error('AI move failed');
       }
 
-      console.log('AI API call successful, processing response');
       const data = await response.json();
-      console.log('AI response data:', data);
       
       // Update board state
       const frontendPosition = convertBackendToFrontend(data.board);
@@ -207,7 +201,8 @@ const Index = () => {
       setCurrentTurn(data.turn);
       setLastMove(moveObj);
       
-      // Save to history
+      // Save to history - data.turn is NEXT player's turn, so previous player made the move
+      const playerWhoMoved = data.turn === 'white' ? 'black' : 'white';
       saveToHistory(frontendPosition, data.turn, moveObj);
 
       // Update thinking steps with result
@@ -263,10 +258,9 @@ const Index = () => {
   // Auto-trigger AI moves
   useEffect(() => {
     if (gameInProgress && isAITurn() && !isAIThinking) {
-      console.log('Triggering AI move for:', currentTurn, 'isAI:', isAITurn(), 'gameInProgress:', gameInProgress, 'isAIThinking:', isAIThinking);
       triggerAIMove();
     }
-  }, [gameInProgress, currentTurn, isAIThinking, triggerAIMove]); // Added triggerAIMove back
+  }, [gameInProgress, currentTurn, isAIThinking, triggerAIMove]);
 
   const getValidMoves = useCallback(async (square: string) => {
     try {
@@ -360,6 +354,17 @@ const Index = () => {
 
 
   const startNewGame = async () => {
+    // Force complete reset by changing game key
+    const newGameKey = gameKey + 1;
+    setGameKey(newGameKey);
+
+    // Clear other state
+    setSelectedSquare(null);
+    setValidMoves([]);
+    setLastMove(null);
+    setAIResponse(null);
+    setThinkingSteps([]);
+
     try {
       const response = await fetch('http://localhost:8001/new', { method: 'POST' });
       if (!response.ok) {
@@ -369,7 +374,7 @@ const Index = () => {
       // Configure bots based on player config
       const whiteBot = playerConfig.white === 'human' ? 'human' : playerConfig.white.id;
       const blackBot = playerConfig.black === 'human' ? 'human' : playerConfig.black.id;
-      
+
       const botResponse = await fetch('http://localhost:8001/set-bots', {
         method: 'POST',
         headers: {
@@ -384,16 +389,9 @@ const Index = () => {
       if (!botResponse.ok) {
         throw new Error('Failed to configure bots');
       }
-      
+
       await fetchGameState();
-      setSelectedSquare(null);
-      setValidMoves([]);
-      setLastMove(null);
       setGameInProgress(true);
-      setAIResponse(null);
-      setThinkingSteps([]);
-      setMoveHistory([]);
-      setCurrentMoveIndex(-1);
       setShowAnalysis(true);
 
       toast({
@@ -413,26 +411,30 @@ const Index = () => {
   };
 
   const resetGame = async () => {
+    // Increment game key to force component remount and clear history
+    const newGameKey = gameKey + 1;
+    setGameKey(newGameKey);
+
+    // Clear everything
+    setSelectedSquare(null);
+    setValidMoves([]);
+    setLastMove(null);
+    setGameInProgress(false);
+    setAIResponse(null);
+    setThinkingSteps([]);
+    setShowAnalysis(false);
+
     try {
       const response = await fetch('http://localhost:8001/reset', { method: 'POST' });
       if (!response.ok) {
         throw new Error('Failed to reset game');
       }
-      
+
       await fetchGameState();
-      setSelectedSquare(null);
-      setValidMoves([]);
-      setLastMove(null);
-      setGameInProgress(false);
-      setAIResponse(null);
-      setThinkingSteps([]);
-      setMoveHistory([]);
-      setCurrentMoveIndex(-1);
-      setShowAnalysis(false);
     } catch (error) {
       console.error('Error resetting game:', error);
       toast({
-        title: "Error", 
+        title: "Error",
         description: "Failed to reset game",
         variant: "destructive"
       });
@@ -672,13 +674,18 @@ const Index = () => {
     }
   };
 
-  const saveToHistory = (newPosition: ChessPiece[], newTurn: 'white' | 'black', move: ChessMove | null) => {
-    // If we're not at the end of history, remove future moves
-    const newHistory = moveHistory.slice(0, currentMoveIndex + 1);
-    newHistory.push({ position: newPosition, turn: newTurn, move });
-    setMoveHistory(newHistory);
-    setCurrentMoveIndex(newHistory.length - 1);
-  };
+  const saveToHistory = useCallback((newPosition: ChessPiece[], newTurn: 'white' | 'black', move: ChessMove | null) => {
+    // Use functional update to ensure we always have the latest state
+    setMoveHistory(prevHistory => {
+      const newEntry = { position: newPosition, turn: newTurn, move };
+      const newHistory = [...prevHistory, newEntry];
+
+      // Update current move index to the new last position
+      setCurrentMoveIndex(newHistory.length - 1);
+
+      return newHistory;
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
@@ -822,10 +829,23 @@ const Index = () => {
                     }`}
                   >
                     <ThinkingProcess
+                      key={`thinking-setup-${gameKey}`}
                       aiResponse={aiResponse}
                       isThinking={isAIThinking}
                       currentModel={getCurrentAIModel()}
                       thinkingSteps={thinkingSteps}
+                      moveHistory={moveHistory}
+                      onResetGame={resetGame}
+                      currentMoveIndex={currentMoveIndex}
+                      onMoveSelect={(index) => {
+                        if (index >= 0 && index < moveHistory.length) {
+                          const selectedMove = moveHistory[index];
+                          setPosition(selectedMove.position);
+                          setCurrentTurn(selectedMove.turn);
+                          setLastMove(selectedMove.move);
+                          setCurrentMoveIndex(index);
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -833,10 +853,23 @@ const Index = () => {
 
               <TabsContent value="analysis" className="mt-4">
                 <ThinkingProcess
+                  key={`thinking-analysis-${gameKey}`}
                   aiResponse={aiResponse}
                   isThinking={isAIThinking}
                   currentModel={getCurrentAIModel()}
                   thinkingSteps={thinkingSteps}
+                  moveHistory={moveHistory}
+                  onResetGame={resetGame}
+                  currentMoveIndex={currentMoveIndex}
+                  onMoveSelect={(index) => {
+                    if (index >= 0 && index < moveHistory.length) {
+                      const selectedMove = moveHistory[index];
+                      setPosition(selectedMove.position);
+                      setCurrentTurn(selectedMove.turn);
+                      setLastMove(selectedMove.move);
+                      setCurrentMoveIndex(index);
+                    }
+                  }}
                 />
               </TabsContent>
 

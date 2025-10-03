@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Brain, Clock, Target, TrendingUp, Lightbulb } from 'lucide-react';
+import { Brain, Clock, Target, TrendingUp, Lightbulb, RotateCcw, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AIModel } from './ModelSelector';
 
@@ -26,20 +27,39 @@ export type AIResponse = {
   thinkingSteps: ThinkingStep[];
 };
 
+export type MoveHistoryEntry = {
+  position: any[];
+  turn: 'white' | 'black';
+  move: {
+    from: string;
+    to: string;
+    piece: any;
+  } | null;
+};
+
 interface ThinkingProcessProps {
   aiResponse: AIResponse | null;
   isThinking: boolean;
   currentModel: AIModel | null;
   thinkingSteps: ThinkingStep[];
+  moveHistory?: MoveHistoryEntry[];
+  onResetGame?: () => void;
+  currentMoveIndex?: number;
+  onMoveSelect?: (index: number) => void;
 }
 
-const ThinkingProcess = ({ 
-  aiResponse, 
-  isThinking, 
+const ThinkingProcess = ({
+  aiResponse,
+  isThinking,
   currentModel,
-  thinkingSteps 
+  thinkingSteps,
+  moveHistory = [],
+  onResetGame,
+  currentMoveIndex = -1,
+  onMoveSelect
 }: ThinkingProcessProps) => {
   const [displayedSteps, setDisplayedSteps] = useState<ThinkingStep[]>([]);
+
 
   useEffect(() => {
     if (isThinking) {
@@ -84,22 +104,150 @@ const ThinkingProcess = ({
     return (evaluation / 100).toFixed(2);
   };
 
+  const formatMove = (move: MoveHistoryEntry['move']) => {
+    if (!move) return '';
+    let notation = '';
+
+    // Add piece symbol (except for pawns)
+    if (move.piece.type !== 'pawn') {
+      notation += getPieceNotation(move.piece.type);
+    }
+
+    // Add destination square
+    notation += move.to;
+
+    return notation;
+  };
+
+  const getPieceNotation = (pieceType: string) => {
+    const symbols: { [key: string]: string } = {
+      king: 'K',
+      queen: 'Q',
+      rook: 'R',
+      bishop: 'B',
+      knight: 'N',
+      pawn: ''
+    };
+    return symbols[pieceType] || '';
+  };
+
+  const getAllMoves = () => {
+    // Group moves by pairs (white + black)
+    const movePairs: Array<{
+      moveNumber: number;
+      white: { move: ChessMove | null; index: number } | null;
+      black: { move: ChessMove | null; index: number } | null;
+    }> = [];
+
+    const validMoves = moveHistory.filter(entry => entry.move !== null);
+
+    for (let i = 0; i < validMoves.length; i++) {
+      const moveNumber = Math.floor(i / 2) + 1;
+      const isWhite = i % 2 === 0;
+
+      if (isWhite) {
+        movePairs.push({
+          moveNumber,
+          white: { move: validMoves[i].move, index: i },
+          black: null
+        });
+      } else {
+        // Add black's move to the last pair
+        if (movePairs.length > 0) {
+          movePairs[movePairs.length - 1].black = { move: validMoves[i].move, index: i };
+        }
+      }
+    }
+
+    return movePairs;
+  };
+
   return (
-    <Card className="w-full h-full flex flex-col">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Brain className="w-6 h-6 text-primary" />
-            AI Thinking Process
+    <div className="space-y-4 h-full flex flex-col">
+      {/* Move History */}
+      <Card className="flex-1">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2">
+            <History className="w-6 h-6 text-primary" />
+            Move History
+          </CardTitle>
+
+          {/* Spacer */}
+          <div className="h-2"></div>
+
+          {/* Column Headers */}
+          <div className="flex items-center text-xs text-muted-foreground font-medium border-b pb-2">
+            <div className="w-12">#</div>
+            <div className="flex-1 px-2">White</div>
+            <div className="flex-1 px-2">Black</div>
           </div>
-          {currentModel && (
-            <Badge variant="outline" className="flex items-center gap-1">
-              {currentModel.icon}
-              {currentModel.name}
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
+        </CardHeader>
+        <CardContent className="flex-1 pt-4">
+          <ScrollArea className="h-32">
+            <div className="space-y-1">
+              {getAllMoves().map((movePair) => (
+                <div key={`move-pair-${movePair.moveNumber}`} className="flex items-center text-sm hover:bg-muted/30 rounded px-1 py-1">
+                  {/* Move number */}
+                  <div className="w-12 text-gray-500 text-xs font-medium">
+                    {movePair.moveNumber}.
+                  </div>
+
+                  {/* White's move */}
+                  <div className="flex-1 px-2">
+                    {movePair.white ? (
+                      <button
+                        className={cn(
+                          "text-left hover:bg-blue-100 rounded px-2 py-1 font-mono text-sm w-full",
+                          currentMoveIndex === movePair.white.index && "bg-blue-200 font-bold"
+                        )}
+                        onClick={() => onMoveSelect?.(movePair.white!.index)}
+                      >
+                        {formatMove(movePair.white.move)}
+                      </button>
+                    ) : (
+                      <div className="px-2 py-1 text-muted-foreground">-</div>
+                    )}
+                  </div>
+
+                  {/* Black's move */}
+                  <div className="flex-1 px-2">
+                    {movePair.black ? (
+                      <button
+                        className={cn(
+                          "text-left hover:bg-blue-100 rounded px-2 py-1 font-mono text-sm w-full",
+                          currentMoveIndex === movePair.black.index && "bg-blue-200 font-bold"
+                        )}
+                        onClick={() => onMoveSelect?.(movePair.black!.index)}
+                      >
+                        {formatMove(movePair.black.move)}
+                      </button>
+                    ) : (
+                      <div className="px-2 py-1 text-muted-foreground">-</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+
+      {/* AI Analysis */}
+      <Card className="w-full h-full flex flex-col">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Brain className="w-6 h-6 text-primary" />
+              AI Analysis
+            </div>
+            {currentModel && (
+              <Badge variant="outline" className="flex items-center gap-1">
+                {currentModel.icon}
+                {currentModel.name}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
       
       <CardContent className="flex-1 overflow-hidden">
         {isThinking ? (
@@ -243,7 +391,20 @@ const ThinkingProcess = ({
           </div>
         )}
       </CardContent>
-    </Card>
+      </Card>
+
+      {/* Reset Button */}
+      {onResetGame && (
+        <Button
+          onClick={onResetGame}
+          className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+          size="lg"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Reset Game
+        </Button>
+      )}
+    </div>
   );
 };
 
