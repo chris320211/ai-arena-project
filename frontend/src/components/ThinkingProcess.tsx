@@ -44,6 +44,8 @@ interface ThinkingProcessProps {
   thinkingSteps: ThinkingStep[];
   moveHistory?: MoveHistoryEntry[];
   onResetGame?: () => void;
+  whitePlayer?: AIModel | 'human';
+  blackPlayer?: AIModel | 'human';
 }
 
 const ThinkingProcess = ({
@@ -52,7 +54,9 @@ const ThinkingProcess = ({
   currentModel,
   thinkingSteps,
   moveHistory = [],
-  onResetGame
+  onResetGame,
+  whitePlayer = 'human',
+  blackPlayer = 'human'
 }: ThinkingProcessProps) => {
   const [displayedSteps, setDisplayedSteps] = useState<ThinkingStep[]>([]);
 
@@ -127,6 +131,11 @@ const ThinkingProcess = ({
     return symbols[pieceType] || '';
   };
 
+  const getPlayerName = (player: AIModel | 'human') => {
+    if (player === 'human') return 'Human';
+    return player.name;
+  };
+
   const getAllMoves = () => {
     // Group moves by pairs (white + black)
     const movePairs: Array<{
@@ -165,65 +174,107 @@ const ThinkingProcess = ({
   return (
     <div className="space-y-4">
       {/* Move History */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-3 bg-gradient-to-br from-muted/30 to-muted/10">
+          <div className="flex items-center justify-between mb-3">
             <CardTitle className="flex items-center gap-2">
-              <History className="w-6 h-6 text-primary" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <History className="w-5 h-5 text-primary" />
+              </div>
               Move History
             </CardTitle>
 
             {/* Move counter */}
-            <div className="flex items-center gap-2">
-              <div className="text-xs text-muted-foreground font-medium px-2 py-1 rounded-md bg-muted/30">
-                {moveHistory.length > 0 ? `${moveHistory.length} move${moveHistory.length !== 1 ? 's' : ''}` : 'No moves'}
+            <Badge variant="secondary" className="px-3 py-1">
+              {moveHistory.length > 0 ? `${moveHistory.length} move${moveHistory.length !== 1 ? 's' : ''}` : 'No moves'}
+            </Badge>
+          </div>
+
+          {/* Player Info Cards */}
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            {/* White Player */}
+            <div className="bg-white dark:bg-white/10 backdrop-blur-sm rounded-lg p-2 border-2 border-gray-300 dark:border-white/20">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-white border-2 border-gray-800 flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">White</div>
+                  <div className="text-xs font-bold truncate text-gray-900 dark:text-white">{getPlayerName(whitePlayer)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Black Player */}
+            <div className="bg-gray-900 dark:bg-gray-900/60 backdrop-blur-sm rounded-lg p-2 border-2 border-gray-700 dark:border-gray-600">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-gray-900 dark:bg-gray-800 border-2 border-gray-300 flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Black</div>
+                  <div className="text-xs font-bold truncate text-white dark:text-gray-100">{getPlayerName(blackPlayer)}</div>
+                </div>
               </div>
             </div>
           </div>
+        </CardHeader>
 
-          {/* Spacer */}
-          <div className="h-2"></div>
-
+        <CardContent className="p-0">
           {/* Column Headers */}
-          <div className="flex items-center text-xs text-muted-foreground font-medium border-b pb-2">
-            <div className="w-12">#</div>
+          <div className="flex items-center text-xs font-semibold bg-muted/50 border-y px-4 py-2">
+            <div className="w-12 text-muted-foreground">#</div>
             <div className="flex-1 px-2">White</div>
             <div className="flex-1 px-2">Black</div>
           </div>
-        </CardHeader>
-        <CardContent className="pt-4">
+
+          {/* Moves List */}
           <ScrollArea className="h-64">
-            <div className="space-y-1">
-              {getAllMoves().map((movePair) => (
-                <div key={`move-pair-${movePair.moveNumber}`} className="flex items-center text-sm hover:bg-muted/30 rounded px-1 py-1">
-                  {/* Move number */}
-                  <div className="w-12 text-gray-500 text-xs font-medium">
-                    {movePair.moveNumber}.
-                  </div>
-
-                  {/* White's move */}
-                  <div className="flex-1 px-2">
-                    {movePair.white ? (
-                      <div className="px-2 py-1 font-mono text-sm">
-                        {formatMove(movePair.white.move)}
-                      </div>
-                    ) : (
-                      <div className="px-2 py-1 text-muted-foreground">-</div>
-                    )}
-                  </div>
-
-                  {/* Black's move */}
-                  <div className="flex-1 px-2">
-                    {movePair.black ? (
-                      <div className="px-2 py-1 font-mono text-sm">
-                        {formatMove(movePair.black.move)}
-                      </div>
-                    ) : (
-                      <div className="px-2 py-1 text-muted-foreground">-</div>
-                    )}
-                  </div>
+            <div className="px-2 py-1">
+              {getAllMoves().length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+                  <History className="w-12 h-12 opacity-20 mb-2" />
+                  <p className="text-sm">No moves yet</p>
                 </div>
-              ))}
+              ) : (
+                getAllMoves().map((movePair, index) => (
+                  <div
+                    key={`move-pair-${movePair.moveNumber}`}
+                    className={cn(
+                      "flex items-center text-sm transition-colors rounded-lg px-2 py-1.5",
+                      "hover:bg-muted/50",
+                      index % 2 === 0 ? "bg-muted/20" : ""
+                    )}
+                  >
+                    {/* Move number */}
+                    <div className="w-12 text-muted-foreground text-xs font-bold">
+                      {movePair.moveNumber}.
+                    </div>
+
+                    {/* White's move */}
+                    <div className="flex-1 px-2">
+                      {movePair.white ? (
+                        <div className="inline-flex items-center gap-1 px-3 py-1 rounded-md bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-gray-700">
+                          <span className="font-mono text-sm font-semibold">
+                            {formatMove(movePair.white.move)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="px-3 py-1 text-muted-foreground text-xs">—</div>
+                      )}
+                    </div>
+
+                    {/* Black's move */}
+                    <div className="flex-1 px-2">
+                      {movePair.black ? (
+                        <div className="inline-flex items-center gap-1 px-3 py-1 rounded-md bg-gray-900/60 dark:bg-gray-900/20 border border-gray-700 dark:border-gray-600">
+                          <span className="font-mono text-sm font-semibold text-white dark:text-gray-200">
+                            {formatMove(movePair.black.move)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="px-3 py-1 text-muted-foreground text-xs">—</div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </ScrollArea>
         </CardContent>

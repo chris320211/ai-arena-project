@@ -779,6 +779,8 @@ const Index = () => {
                   thinkingSteps={thinkingSteps}
                   moveHistory={moveHistory}
                   onResetGame={resetGame}
+                  whitePlayer={playerConfig.white}
+                  blackPlayer={playerConfig.black}
                 />
               </div>
             </div>
