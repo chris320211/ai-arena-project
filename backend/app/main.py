@@ -390,15 +390,15 @@ def create_ai_engine(engine_type, *args, **kwargs):
 
 ENGINES = {
     "random": RandomAI(),
-    "ollama_llama3": OllamaAI(os.getenv("OLLAMA_MODEL_LLAMA3", "llama3:8b")),
+    "anthropic_claude_haiku": create_ai_engine("anthropic", "claude-3-5-haiku-20241022") if os.getenv("ANTHROPIC_API_KEY") else None,
     "ollama_phi35": OllamaAI(os.getenv("OLLAMA_MODEL_PHI35", "phi3.5")),
     "openai_gpt4o_mini": OpenAIAI("gpt-4o-mini"),
-    
+
     # New API-based bots (will be None if API keys are not provided)
-    "anthropic_claude": create_ai_engine("anthropic", "claude-3-5-sonnet-20241022") if os.getenv("ANTHROPIC_API_KEY") else None,
+    "anthropic_claude_sonnet": create_ai_engine("anthropic", "claude-3-5-sonnet-20241022") if os.getenv("ANTHROPIC_API_KEY") else None,
     "gemini_pro": create_ai_engine("gemini", "gemini-1.5-pro") if os.getenv("GOOGLE_API_KEY") else None,
     "openai_gpt4o": create_ai_engine("openai", "gpt-4o") if os.getenv("OPENAI_API_KEY") else None,
-    
+
     # Generic HTTP API slots for custom providers
     # These can be configured via environment variables
 }
