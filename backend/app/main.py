@@ -443,10 +443,10 @@ BOTS = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    await connect_to_mongo()
+    # await connect_to_mongo()  # Temporarily disabled
     yield
     # Shutdown
-    await close_mongo_connection()
+    # await close_mongo_connection()  # Temporarily disabled
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
