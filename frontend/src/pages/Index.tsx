@@ -640,19 +640,33 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
-      {/* Header */}
+      {/* Header with Navigation */}
       <div className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Chess AI Arena
-              </h1>
-              <Badge variant="outline" className="text-xs">
-                AI vs AI Battles
-              </Badge>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  Game Arena
+                </h1>
+                <Badge variant="outline" className="text-xs">
+                  Multi-Game Platform
+                </Badge>
+              </div>
+
+              {/* Navigation Tabs */}
+              <nav className="hidden md:flex">
+                <Tabs defaultValue="chess" className="w-full">
+                  <TabsList className="grid grid-cols-3 min-w-fit">
+                    <TabsTrigger value="tictactoe" className="px-6">Tic Tac Toe</TabsTrigger>
+                    <TabsTrigger value="connect4" className="px-6">Connect 4</TabsTrigger>
+                    <TabsTrigger value="chess" className="px-6">Chess</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </nav>
             </div>
-            
+
+            {/* Game Controls - Show only for Chess */}
             <div className="flex items-center gap-2">
               <Button
                 onClick={startNewGame}
@@ -662,7 +676,7 @@ const Index = () => {
                 <Play className="w-4 h-4" />
                 Start Game
               </Button>
-              
+
               <Button
                 onClick={resetGame}
                 variant="outline"
@@ -678,14 +692,27 @@ const Index = () => {
 
       <div className="container mx-auto px-4 py-3">
         <Tabs defaultValue="chess" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="chess">Chess</TabsTrigger>
-            <TabsTrigger value="tictactoe">Tic Tac Toe</TabsTrigger>
-          </TabsList>
+          {/* Mobile Navigation - Show tabs below header on mobile */}
+          <div className="md:hidden mb-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="tictactoe">TTT</TabsTrigger>
+              <TabsTrigger value="connect4">C4</TabsTrigger>
+              <TabsTrigger value="chess">Chess</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="tictactoe">
             <div className="flex justify-center">
               <TicTacToe className="max-w-md" />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="connect4">
+            <div className="flex justify-center">
+              <div className="text-center p-8">
+                <h2 className="text-2xl font-bold mb-4">Connect 4</h2>
+                <p className="text-muted-foreground">Coming Soon...</p>
+              </div>
             </div>
           </TabsContent>
 
