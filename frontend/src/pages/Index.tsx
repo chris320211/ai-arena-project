@@ -10,6 +10,7 @@ import ChessBoard, { ChessPiece, ChessMove } from '@/components/ChessBoard';
 import ModelSelector, { AIModel, PlayerConfig, AI_MODELS } from '@/components/ModelSelector';
 import ThinkingProcess, { AIResponse, ThinkingStep } from '@/components/ThinkingProcess';
 import GameStats, { GameResult, ModelStats, EloHistoryEntry } from '@/components/GameStats';
+import TicTacToe from '@/components/TicTacToe';
 
 // Initial chess position
 const INITIAL_POSITION: ChessPiece[] = [
@@ -676,6 +677,19 @@ const Index = () => {
       </div>
 
       <div className="container mx-auto px-4 py-3">
+        <Tabs defaultValue="chess" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="chess">Chess</TabsTrigger>
+            <TabsTrigger value="tictactoe">Tic Tac Toe</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="tictactoe">
+            <div className="flex justify-center">
+              <TicTacToe className="max-w-md" />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="chess">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
           {/* Left Column - Game Board */}
           <div className="xl:col-span-2 space-y-3">
@@ -793,6 +807,8 @@ const Index = () => {
             </Tabs>
           </div>
         </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
