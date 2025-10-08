@@ -656,13 +656,11 @@ const Index = () => {
 
               {/* Navigation Tabs */}
               <nav className="hidden md:flex">
-                <Tabs defaultValue="chess" className="w-full">
-                  <TabsList className="grid grid-cols-3 min-w-fit">
-                    <TabsTrigger value="tictactoe" className="px-6">Tic Tac Toe</TabsTrigger>
-                    <TabsTrigger value="connect4" className="px-6">Connect 4</TabsTrigger>
-                    <TabsTrigger value="chess" className="px-6">Chess</TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                <TabsList className="grid grid-cols-3 min-w-fit">
+                  <TabsTrigger value="tictactoe" className="px-6">Tic Tac Toe</TabsTrigger>
+                  <TabsTrigger value="connect4" className="px-6">Connect 4</TabsTrigger>
+                  <TabsTrigger value="chess" className="px-6">Chess</TabsTrigger>
+                </TabsList>
               </nav>
             </div>
 
@@ -691,8 +689,8 @@ const Index = () => {
       </div>
 
       <div className="container mx-auto px-4 py-3">
-        <Tabs defaultValue="chess" className="w-full">
-          {/* Mobile Navigation - Show tabs below header on mobile */}
+        <Tabs defaultValue="tictactoe" className="w-full">
+          {/* Mobile Navigation - Show tabs on mobile only */}
           <div className="md:hidden mb-6">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="tictactoe">TTT</TabsTrigger>
