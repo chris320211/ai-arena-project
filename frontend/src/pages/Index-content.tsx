@@ -139,10 +139,9 @@ const IndexContent = ({
           {/* Right Column - Controls and Analysis */}
           <div className="space-y-6">
             <Tabs defaultValue="setup" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="setup">Setup</TabsTrigger>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
-                <TabsTrigger value="stats">Stats</TabsTrigger>
               </TabsList>
               
               <TabsContent value="setup" className="mt-4">
@@ -162,15 +161,6 @@ const IndexContent = ({
                 />
               </TabsContent>
               
-              <TabsContent value="stats" className="mt-4">
-                <div className="max-h-[800px] overflow-y-auto">
-                  <GameStats
-                    modelStats={modelStats}
-                    recentGames={gameResults}
-                    aiModels={[]} // Pass AI_MODELS from parent
-                  />
-                </div>
-              </TabsContent>
             </Tabs>
           </div>
         </div>

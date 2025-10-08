@@ -95,17 +95,8 @@ class OllamaAI:
 
     def choose(self, board, side):
         legal = _legal_moves_alg(board, side)
-        system_text = (
-            "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
-            "matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
-            "Choose strictly from the provided legal_moves."
-        )
-        user_text = (
-            f"turn: {side}\n"
-            f"legal_moves: {legal}\n"
-            f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
-            "If multiple good choices exist, prefer checks, captures, and center control."
-        )
+        system_text = _get_ai_system_prompt()
+        user_text = _get_ai_user_prompt(board, side, legal)
         prompt = system_text + "\n\n" + user_text
         data = self._post({
             "model": self.model,
@@ -146,17 +137,8 @@ class OpenAIAI:
 
     def choose(self, board, side):
         legal = _legal_moves_alg(board, side)
-        system_text = (
-            "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
-            "matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
-            "Choose strictly from the provided legal_moves."
-        )
-        user_text = (
-            f"turn: {side}\n"
-            f"legal_moves: {legal}\n"
-            f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
-            "If multiple good choices exist, prefer checks, captures, and center control."
-        )
+        system_text = _get_ai_system_prompt()
+        user_text = _get_ai_user_prompt(board, side, legal)
         resp = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -200,18 +182,9 @@ class AnthropicAI:
 
     def choose(self, board, side):
         legal = _legal_moves_alg(board, side)
-        system_text = (
-            "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
-            "matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
-            "Choose strictly from the provided legal_moves."
-        )
-        user_text = (
-            f"turn: {side}\n"
-            f"legal_moves: {legal}\n"
-            f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
-            "If multiple good choices exist, prefer checks, captures, and center control."
-        )
-        
+        system_text = _get_ai_system_prompt()
+        user_text = _get_ai_user_prompt(board, side, legal)
+
         message = self.client.messages.create(
             model=self.model,
             max_tokens=150,
@@ -254,18 +227,9 @@ class GeminiAI:
 
     def choose(self, board, side):
         legal = _legal_moves_alg(board, side)
-        system_text = (
-            "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
-            "matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
-            "Choose strictly from the provided legal_moves."
-        )
-        user_text = (
-            f"turn: {side}\n"
-            f"legal_moves: {legal}\n"
-            f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
-            "If multiple good choices exist, prefer checks, captures, and center control."
-        )
-        
+        system_text = _get_ai_system_prompt()
+        user_text = _get_ai_user_prompt(board, side, legal)
+
         prompt = system_text + "\n\n" + user_text
         response = self.model.generate_content(prompt)
         txt = response.text
@@ -303,18 +267,9 @@ class HttpAI:
 
     def choose(self, board, side):
         legal = _legal_moves_alg(board, side)
-        system_text = (
-            "You are a chess engine. Pick ONE legal move. Respond ONLY with JSON "
-            "matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
-            "Choose strictly from the provided legal_moves."
-        )
-        user_text = (
-            f"turn: {side}\n"
-            f"legal_moves: {legal}\n"
-            f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n"
-            "If multiple good choices exist, prefer checks, captures, and center control."
-        )
-        
+        system_text = _get_ai_system_prompt()
+        user_text = _get_ai_user_prompt(board, side, legal)
+
         payload = {
             "model": self.model,
             "messages": [
@@ -392,15 +347,15 @@ def create_ai_engine(engine_type, *args, **kwargs):
 
 ENGINES = {
     "random": RandomAI(),
-    "ollama_llama3": OllamaAI(os.getenv("OLLAMA_MODEL_LLAMA3", "llama3:8b")),
+    "anthropic_claude_haiku": create_ai_engine("anthropic", "claude-3-5-haiku-20241022") if os.getenv("ANTHROPIC_API_KEY") else None,
     "ollama_phi35": OllamaAI(os.getenv("OLLAMA_MODEL_PHI35", "phi3.5")),
     "openai_gpt4o_mini": OpenAIAI("gpt-4o-mini"),
-    
+
     # New API-based bots (will be None if API keys are not provided)
-    "anthropic_claude": create_ai_engine("anthropic", "claude-3-5-sonnet-20241022") if os.getenv("ANTHROPIC_API_KEY") else None,
+    "anthropic_claude_sonnet": create_ai_engine("anthropic", "claude-3-5-sonnet-20241022") if os.getenv("ANTHROPIC_API_KEY") else None,
     "gemini_pro": create_ai_engine("gemini", "gemini-1.5-pro") if os.getenv("GOOGLE_API_KEY") else None,
     "openai_gpt4o": create_ai_engine("openai", "gpt-4o") if os.getenv("OPENAI_API_KEY") else None,
-    
+
     # Generic HTTP API slots for custom providers
     # These can be configured via environment variables
 }
@@ -479,6 +434,8 @@ STATE = {
     "game_start_time": None,
     "move_count": 0,
     "game_active": False,
+    "move_history": [],  # Track move history to prevent repetition
+    "position_history": [],  # Track board positions for threefold repetition detection
 }
 
 class Square(BaseModel):
@@ -518,12 +475,85 @@ def _board_array(board) -> List[List[str]]:
         arr.append(row)
     return arr
 
+def _board_to_string(board) -> str:
+    """Convert board to string for position comparison"""
+    return ''.join(''.join(row) for row in board)
+
+def _would_repeat_position(board, fx: int, fy: int, tx: int, ty: int) -> bool:
+    """Check if a move would create a threefold repetition"""
+    # Create a temporary board with the proposed move
+    temp = _clone_board(board)
+    move_piece(temp, fx, fy, tx, ty)
+    new_position = _board_to_string(temp)
+
+    # Count how many times this position has occurred
+    position_count = STATE["position_history"].count(new_position)
+
+    # If this position has already occurred twice, don't allow it (would be third time)
+    return position_count >= 2
+
+def _is_immediate_reversal(fx: int, fy: int, tx: int, ty: int) -> bool:
+    """Check if move immediately reverses the last move"""
+    if not STATE["last_move"]:
+        return False
+
+    last = STATE["last_move"]
+    last_from = _alg_to_xy(last["from"])
+    last_to = _alg_to_xy(last["to"])
+
+    # Check if current move reverses the last move (same piece moving back)
+    return (fx, fy) == last_to and (tx, ty) == last_from
+
 def _legal_moves_alg(board, side) -> List[dict]:
     tuples = _collect_legal_moves_for_side(board, side)
     out: List[dict] = []
     for fx, fy, tx, ty in tuples:
         out.append({"from": _xy_to_alg(fx, fy), "to": _xy_to_alg(tx, ty)})
     return out
+
+def _get_ai_system_prompt() -> str:
+    """Get improved system prompt for AI chess engines"""
+    return (
+        "You are an expert chess engine. Your goal is to WIN the game. "
+        "Respond ONLY with JSON matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
+        "Choose strictly from the provided legal_moves list."
+    )
+
+def _get_ai_user_prompt(board, side, legal_moves) -> str:
+    """Get improved user prompt with strategic priorities"""
+    # Check for opponent king position to help AI recognize check opportunities
+    opp_side = "black" if side == "white" else "white"
+    opp_king = 'k' if opp_side == "black" else 'K'
+
+    king_pos = None
+    for x in range(8):
+        for y in range(8):
+            if board[x][y] == opp_king:
+                king_pos = _xy_to_alg(x, y)
+                break
+        if king_pos:
+            break
+
+    is_in_check_now = is_in_check(board, opp_side)
+
+    prompt = (
+        f"turn: {side}\n"
+        f"opponent_king_position: {king_pos}\n"
+        f"opponent_in_check: {is_in_check_now}\n"
+        f"legal_moves: {legal_moves}\n"
+        f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n\n"
+        "PRIORITY ORDER (choose the highest priority available):\n"
+        "1. CHECKMATE - If you can checkmate, do it immediately!\n"
+        "2. CAPTURE QUEEN - If you can capture opponent's Queen (Q/q), take it!\n"
+        "3. CAPTURE ROOK - If you can capture opponent's Rook (R/r), take it!\n"
+        "4. CHECK - If you can put opponent's King in check, consider it!\n"
+        "5. CAPTURE OTHER PIECES - Take opponent's pieces (Bishop/Knight/Pawn) when advantageous\n"
+        "6. PROTECT YOUR PIECES - Move pieces that are under attack to safety\n"
+        "7. DEVELOP & CONTROL CENTER - Control center squares (e4, d4, e5, d5)\n\n"
+        "Pick the BEST move based on these priorities."
+    )
+
+    return prompt
 
 @app.get("/state")
 def get_state():
@@ -541,6 +571,8 @@ def new_game():
     STATE["game_start_time"] = datetime.utcnow()
     STATE["move_count"] = 0
     STATE["game_active"] = True
+    STATE["move_history"] = []
+    STATE["position_history"] = [_board_to_string(STATE["board"])]
     return {"board": STATE["board"], "turn": STATE["turn"], "last_move": STATE["last_move"]}
 
 @app.post("/reset")
@@ -551,6 +583,8 @@ def reset_game():
     STATE["game_start_time"] = None
     STATE["move_count"] = 0
     STATE["game_active"] = False
+    STATE["move_history"] = []
+    STATE["position_history"] = []
     return {"board": STATE["board"], "turn": STATE["turn"], "last_move": STATE["last_move"]}
 
 async def save_completed_game(winner: Optional[str], end_reason: str):
@@ -684,6 +718,8 @@ async def make_move(payload: MovePayload):
 
     STATE["last_move"] = {"from": _xy_to_alg(fx, fy), "to": _xy_to_alg(tx, ty)}
     STATE["move_count"] += 1
+    STATE["move_history"].append(STATE["last_move"])
+    STATE["position_history"].append(_board_to_string(board))
 
     opp = "black" if turn == "white" else "white"
     checkmate = is_checkmate(board, opp)
@@ -751,6 +787,8 @@ async def ai_submit(payload: BotMove):
 
     STATE["last_move"] = {"from": payload.from_, "to": payload.to}
     STATE["move_count"] += 1
+    STATE["move_history"].append(STATE["last_move"])
+    STATE["position_history"].append(_board_to_string(board))
 
     opp = "black" if turn == "white" else "white"
     checkmate = is_checkmate(board, opp)
@@ -821,7 +859,7 @@ async def ai_step():
     engine = ENGINES.get(bot_name)
     if not engine:
         raise HTTPException(500, f"Bot engine not found: {bot_name}")
-    
+
     try:
         mv = engine.choose(board, turn)
     except Exception as e:
@@ -832,12 +870,42 @@ async def ai_step():
     pool = _collect_legal_moves_for_side(board, turn)
     if not pool:
         raise HTTPException(400, "Bot cannot make a move (no legal moves)")
-    if mv not in pool:
+
+    # Filter out moves that would cause repetition or immediate reversal
+    fx, fy, tx, ty = mv if mv in pool else pool[0]
+
+    # Check if the AI's chosen move would repeat or reverse
+    if mv in pool and (_is_immediate_reversal(fx, fy, tx, ty) or _would_repeat_position(board, fx, fy, tx, ty)):
+        print(f"Warning: {bot_name} tried to repeat/reverse move, finding alternative")
+        # Find a non-repeating move
+        alternative_found = False
+        for candidate in pool:
+            cfx, cfy, ctx, cty = candidate
+            if not _is_immediate_reversal(cfx, cfy, ctx, cty) and not _would_repeat_position(board, cfx, cfy, ctx, cty):
+                mv = candidate
+                alternative_found = True
+                print(f"Found non-repeating alternative: {_xy_to_alg(cfx, cfy)} -> {_xy_to_alg(ctx, cty)}")
+                break
+
+        # If all moves would repeat (very rare), allow it to prevent getting stuck
+        if not alternative_found:
+            print(f"Warning: All moves would repeat, allowing repetition")
+            mv = pool[0]
+    elif mv not in pool:
         print(f"Warning: {bot_name} returned invalid move, using fallback")
+        # Find a non-repeating fallback
         mv = pool[0]
+        for candidate in pool:
+            cfx, cfy, ctx, cty = candidate
+            if not _is_immediate_reversal(cfx, cfy, ctx, cty) and not _would_repeat_position(board, cfx, cfy, ctx, cty):
+                mv = candidate
+                break
+
     _apply_move_tuple(board, mv)
     STATE["move_count"] += 1
-    
+    STATE["move_history"].append(STATE["last_move"])
+    STATE["position_history"].append(_board_to_string(board))
+
     tx, ty = mv[2], mv[3]
     moved = board[tx][ty]
     if moved == 'P' and tx == 0:

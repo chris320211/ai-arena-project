@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, User, Target, Cpu, Sparkles, Zap, Globe } from 'lucide-react';
+import { Brain, User, Target, Cpu, Sparkles, Zap, Globe, Play, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type AIModel = {
@@ -31,13 +31,13 @@ const AI_MODELS: AIModel[] = [
     color: 'from-emerald-500 to-teal-600'
   },
   {
-    id: 'ollama_llama3',
-    name: 'Llama 3 8B',
-    description: 'Balanced reasoning and efficiency',
-    strength: 1150,
-    style: 'Strategic & Versatile',
-    icon: <Brain className="w-5 h-5" />,
-    color: 'from-green-500 to-emerald-600'
+    id: 'anthropic_claude_haiku',
+    name: 'Claude Haiku',
+    description: 'Fast and intelligent reasoning',
+    strength: 1900,
+    style: 'Quick & Precise',
+    icon: <Sparkles className="w-5 h-5" />,
+    color: 'from-violet-500 to-purple-600'
   },
   {
     id: 'ollama_phi35',
@@ -59,8 +59,8 @@ const AI_MODELS: AIModel[] = [
   },
   // New API-based models (these will only show if the backend has them available)
   {
-    id: 'anthropic_claude',
-    name: 'Claude 3.5 Sonnet',
+    id: 'anthropic_claude_sonnet',
+    name: 'Claude Sonnet',
     description: 'Most capable with excellent reasoning',
     strength: 2300,
     style: 'Deep & Thoughtful',
@@ -119,9 +119,11 @@ interface ModelSelectorProps {
   playerConfig: PlayerConfig;
   onConfigChange: (config: PlayerConfig) => void;
   gameInProgress: boolean;
+  onStartGame?: () => void;
+  onResetGame?: () => void;
 }
 
-const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress }: ModelSelectorProps) => {
+const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress, onStartGame, onResetGame }: ModelSelectorProps) => {
   const [selectedSide, setSelectedSide] = useState<'white' | 'black'>('white');
 
   const handlePlayerSelect = (player: 'human' | AIModel) => {
@@ -208,6 +210,19 @@ const ModelSelector = ({ playerConfig, onConfigChange, gameInProgress }: ModelSe
             );
           })}
         </div>
+
+        {/* Start Game Button */}
+        {onStartGame && (
+          <Button
+            onClick={onStartGame}
+            disabled={gameInProgress}
+            className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+            size="lg"
+          >
+            <Play className="w-4 h-4" />
+            Start New Game
+          </Button>
+        )}
 
         {/* Player Options */}
         <div className="space-y-3">
