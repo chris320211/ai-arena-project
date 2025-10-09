@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
-import { eloService } from '@/services/eloService';
 import { API_URL } from '@/config/api';
 
 import ChessBoard, { ChessPiece, ChessMove } from '@/components/ChessBoard';
@@ -225,7 +224,6 @@ const Index = () => {
         });
         setGameInProgress(false);
         setShowAnalysis(false);
-        recordGameResult(winner);
       } else if (data.status?.check) {
         toast({
           title: "Check!",
@@ -240,7 +238,6 @@ const Index = () => {
         });
         setGameInProgress(false);
         setShowAnalysis(false);
-        recordGameResult('draw');
       }
 
     } catch (error) {
@@ -560,7 +557,6 @@ const Index = () => {
         });
         setGameInProgress(false);
         setShowAnalysis(false);
-        recordGameResult(winner);
       } else if (data.status?.check) {
         toast({
           title: "Check!",
@@ -575,7 +571,6 @@ const Index = () => {
         });
         setGameInProgress(false);
         setShowAnalysis(false);
-        recordGameResult('draw');
       }
       
       return true;
@@ -640,33 +635,6 @@ const Index = () => {
     return currentPlayer !== 'human' && typeof currentPlayer === 'object' ? currentPlayer : null;
   };
 
-  // Record game result in ELO system
-  const recordGameResult = (winner: 'white' | 'black' | 'draw') => {
-    const whitePlayer = playerConfig.white;
-    const blackPlayer = playerConfig.black;
-
-    // Only record games between AI models (skip human games for now)
-    if (whitePlayer !== 'human' && blackPlayer !== 'human') {
-      try {
-        const result = eloService.recordGameResult(
-          whitePlayer.id,
-          blackPlayer.id,
-          winner
-        );
-
-        const whiteChange = result.whiteRatingAfter - result.whiteRatingBefore;
-        const blackChange = result.blackRatingAfter - result.blackRatingBefore;
-
-        toast({
-          title: "ELO Updated",
-          description: `${whitePlayer.name}: ${whiteChange > 0 ? '+' : ''}${whiteChange}, ${blackPlayer.name}: ${blackChange > 0 ? '+' : ''}${blackChange}`,
-          variant: "default"
-        });
-      } catch (error) {
-        console.error('Error recording ELO result:', error);
-      }
-    }
-  };
 
   // Move navigation functions
   const goBackMove = () => {
@@ -738,7 +706,7 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-3">
+      <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
           {/* Left Column - Game Board */}
           <div className="xl:col-span-2 flex items-start justify-center xl:pl-12">
