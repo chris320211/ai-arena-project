@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Crown, Medal, Award } from "lucide-react";
-import { eloService } from "@/services/eloService";
 import { useEffect, useState } from "react";
 
 interface LeaderboardModel {
@@ -13,6 +12,16 @@ interface LeaderboardModel {
   draws: number;
   winRate: number;
   trend: "up" | "down" | "stable";
+}
+
+interface ModelStats {
+  model_id: string;
+  rating: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  games_played: number;
+  win_rate: number;
 }
 
 const getRankIcon = (rank: number) => {
@@ -28,33 +37,51 @@ const getRankIcon = (rank: number) => {
   }
 };
 
+const getModelDisplayName = (modelId: string): string => {
+  const names: Record<string, string> = {
+    'anthropic_claude_haiku': 'Claude 3 Haiku',
+    'anthropic_claude_sonnet': 'Claude 3.5 Sonnet',
+    'openai_gpt4o_mini': 'GPT-4o Mini',
+    'openai_gpt4o': 'GPT-4o',
+    'gemini_pro': 'Gemini Pro',
+  };
+  return names[modelId] || modelId;
+};
+
 export const Leaderboard = () => {
   const [models, setModels] = useState<LeaderboardModel[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const updateLeaderboard = () => {
-      const ratings = eloService.getRatings();
-      // Filter to only show GPT-4o and Claude Haiku
-      const allowedModels = ['gpt-4o', 'claude-3-haiku-20240307'];
-      const filteredRatings = ratings.filter(r => allowedModels.includes(r.modelId));
+    const updateLeaderboard = async () => {
+      try {
+        const response = await fetch('http://localhost:8001/api/stats/models');
+        const data = await response.json();
 
-      const leaderboardData = filteredRatings.map((rating, index) => ({
-        rank: index + 1,
-        name: eloService.getModelName(rating.modelId),
-        elo: rating.rating,
-        wins: rating.wins,
-        losses: rating.losses,
-        draws: rating.draws,
-        winRate: rating.gamesPlayed > 0 ? Math.round((rating.wins / rating.gamesPlayed) * 100) : 0,
-        trend: "stable" as const // We'll implement trend calculation later based on recent games
-      }));
-      setModels(leaderboardData);
+        const leaderboardData: LeaderboardModel[] = data.model_stats
+          .map((stat: ModelStats, index: number) => ({
+            rank: index + 1,
+            name: getModelDisplayName(stat.model_id),
+            elo: stat.rating,
+            wins: stat.wins,
+            losses: stat.losses,
+            draws: stat.draws,
+            winRate: Math.round(stat.win_rate),
+            trend: "stable" as const
+          }));
+
+        setModels(leaderboardData);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch leaderboard:', error);
+        setLoading(false);
+      }
     };
 
     updateLeaderboard();
 
-    // Update leaderboard every 5 seconds to reflect new game results
-    const interval = setInterval(updateLeaderboard, 5000);
+    // Update leaderboard every 10 seconds to reflect new game results
+    const interval = setInterval(updateLeaderboard, 10000);
     return () => clearInterval(interval);
   }, []);
 

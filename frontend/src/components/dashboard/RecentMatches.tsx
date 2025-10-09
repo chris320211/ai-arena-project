@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Trophy } from "lucide-react";
-import { eloService } from "@/services/eloService";
 import { useEffect, useState } from "react";
 
 interface RecentMatch {
@@ -9,31 +8,43 @@ interface RecentMatch {
   white: string;
   black: string;
   winner: "white" | "black" | "draw";
-  ratingChange: number;
+  moves: number;
   time: string;
 }
+
+const getModelDisplayName = (modelId: string): string => {
+  const names: Record<string, string> = {
+    'anthropic_claude_haiku': 'Claude 3 Haiku',
+    'anthropic_claude_sonnet': 'Claude 3.5 Sonnet',
+    'openai_gpt4o_mini': 'GPT-4o Mini',
+    'openai_gpt4o': 'GPT-4o',
+    'gemini_pro': 'Gemini Pro',
+  };
+  return names[modelId] || modelId;
+};
 
 export const RecentMatches = () => {
   const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
 
   useEffect(() => {
-    const updateMatches = () => {
-      const games = eloService.getRecentGames(10);
-      // Filter to only show games with GPT-4o and Claude Haiku
-      const allowedModels = ['gpt-4o', 'claude-3-haiku-20240307'];
-      const filteredGames = games.filter(game =>
-        allowedModels.includes(game.whiteModelId) && allowedModels.includes(game.blackModelId)
-      );
+    const updateMatches = async () => {
+      try {
+        const response = await fetch('http://localhost:8001/api/stats/games?limit=10');
+        const data = await response.json();
+        const games = data.games || [];
 
-      const matches = filteredGames.map(game => ({
-        id: game.id,
-        white: eloService.getModelName(game.whiteModelId),
-        black: eloService.getModelName(game.blackModelId),
-        winner: game.winner,
-        ratingChange: game.ratingChange,
-        time: getTimeAgo(game.timestamp)
-      }));
-      setRecentMatches(matches);
+        const matches = games.map((game: any) => ({
+          id: game.id,
+          white: getModelDisplayName(game.white_model),
+          black: getModelDisplayName(game.black_model),
+          winner: game.winner,
+          moves: game.moves || 0,
+          time: getTimeAgo(game.timestamp)
+        }));
+        setRecentMatches(matches);
+      } catch (error) {
+        console.error('Failed to fetch recent matches:', error);
+      }
     };
 
     updateMatches();
@@ -43,9 +54,10 @@ export const RecentMatches = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const getTimeAgo = (timestamp: number): string => {
+  const getTimeAgo = (timestamp: string): string => {
+    const gameTime = new Date(timestamp).getTime();
     const now = Date.now();
-    const diff = now - timestamp;
+    const diff = now - gameTime;
 
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -83,7 +95,7 @@ export const RecentMatches = () => {
                   <span className="font-medium text-sm">{match.black}</span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>±{match.ratingChange} ELO</span>
+                  <span>{match.moves} moves</span>
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {match.time}

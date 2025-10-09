@@ -1,13 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingUp } from "lucide-react";
-import { eloService } from "@/services/eloService";
 import { useEffect, useState } from "react";
-import { AI_MODELS } from "@/components/ModelSelector";
 
 interface ChartDataPoint {
-  timestamp: number;
-  time: string;
+  game: number;
   [key: string]: number | string;
 }
 
@@ -16,94 +13,119 @@ const colors = [
   "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"
 ];
 
+const getModelDisplayName = (modelId: string): string => {
+  const names: Record<string, string> = {
+    'anthropic_claude_haiku': 'Claude 3 Haiku',
+    'anthropic_claude_sonnet': 'Claude 3.5 Sonnet',
+    'openai_gpt4o_mini': 'GPT-4o Mini',
+    'openai_gpt4o': 'GPT-4o',
+    'gemini_pro': 'Gemini Pro',
+  };
+  return names[modelId] || modelId;
+};
+
+// ELO calculation functions
+const K_FACTOR = 32;
+
+const calculateExpectedScore = (ratingA: number, ratingB: number): number => {
+  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+};
+
+const calculateNewRating = (currentRating: number, expectedScore: number, actualScore: number): number => {
+  return Math.round(currentRating + K_FACTOR * (actualScore - expectedScore));
+};
+
 export const PerformanceChart = () => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [modelNames, setModelNames] = useState<string[]>([]);
 
   useEffect(() => {
-    const updateChartData = () => {
-      const history = eloService.getEloHistory(100);
-      const ratings = eloService.getRatings();
+    const updateChartData = async () => {
+      try {
+        const gamesResponse = await fetch('http://localhost:8001/api/stats/games?limit=100');
+        const gamesData = await gamesResponse.json();
+        const games = gamesData.games || [];
 
-      // Filter to only show GPT-4o and Claude Haiku
-      const allowedModels = ['gpt-4o', 'claude-3-haiku-20240307'];
-      const playedModelIds = ratings
-        .filter(r => r.gamesPlayed > 0 && allowedModels.includes(r.modelId))
-        .map(r => r.modelId);
-      const names = playedModelIds.map(id => eloService.getModelName(id).replace(/\s+/g, ''));
-      setModelNames(names);
-
-      if (history.length === 0) {
-        // No history data, show initial ratings
-        const initialData: ChartDataPoint = {
-          timestamp: Date.now(),
-          time: "Start",
-        };
-
-        playedModelIds.forEach((modelId, index) => {
-          const rating = ratings.find(r => r.modelId === modelId);
-          initialData[names[index]] = rating ? rating.rating : 1000;
-        });
-
-        setChartData([initialData]);
-        return;
-      }
-
-      // Group history by timestamp to create chart data points
-      const timestampGroups = new Map<number, Map<string, number>>();
-
-      history.forEach(entry => {
-        if (!playedModelIds.includes(entry.modelId)) return;
-
-        const roundedTimestamp = Math.floor(entry.timestamp / (5 * 60 * 1000)) * (5 * 60 * 1000); // Round to 5-minute intervals
-
-        if (!timestampGroups.has(roundedTimestamp)) {
-          timestampGroups.set(roundedTimestamp, new Map());
+        if (games.length === 0) {
+          setChartData([]);
+          setModelNames([]);
+          return;
         }
 
-        const modelName = eloService.getModelName(entry.modelId).replace(/\s+/g, '');
-        timestampGroups.get(roundedTimestamp)!.set(modelName, entry.rating);
-      });
+        // Reverse to get chronological order (oldest first)
+        const orderedGames = games.slice().reverse();
 
-      // Convert to chart data format
-      const data: ChartDataPoint[] = [];
-      const sortedTimestamps = Array.from(timestampGroups.keys()).sort();
+        // Initialize ratings at 1000
+        const ratings: Record<string, number> = {};
+        const uniqueModels = new Set<string>();
 
-      // Track last known rating for each model to fill gaps
-      const lastKnownRatings = new Map<string, number>();
-      playedModelIds.forEach(modelId => {
-        const rating = ratings.find(r => r.modelId === modelId);
-        const modelName = eloService.getModelName(modelId).replace(/\s+/g, '');
-        lastKnownRatings.set(modelName, rating ? rating.rating : 1000);
-      });
-
-      sortedTimestamps.forEach(timestamp => {
-        const dataPoint: ChartDataPoint = {
-          timestamp,
-          time: new Date(timestamp).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-          })
-        };
-
-        const ratingsAtTimestamp = timestampGroups.get(timestamp)!;
-
-        names.forEach(modelName => {
-          if (ratingsAtTimestamp.has(modelName)) {
-            const rating = ratingsAtTimestamp.get(modelName)!;
-            dataPoint[modelName] = rating;
-            lastKnownRatings.set(modelName, rating);
-          } else {
-            // Use last known rating
-            dataPoint[modelName] = lastKnownRatings.get(modelName) || 1000;
-          }
+        orderedGames.forEach((game: any) => {
+          uniqueModels.add(game.white_model);
+          uniqueModels.add(game.black_model);
         });
 
-        data.push(dataPoint);
-      });
+        uniqueModels.forEach(model => {
+          ratings[model] = 1000;
+        });
 
-      // Limit to last 20 data points for readability
-      setChartData(data.slice(-20));
+        // Get display names
+        const names = Array.from(uniqueModels).map(id =>
+          getModelDisplayName(id).replace(/\s+/g, '')
+        );
+        setModelNames(names);
+
+        // Calculate ELO after each game
+        const chartPoints: ChartDataPoint[] = [];
+
+        // Add initial state
+        const initialPoint: ChartDataPoint = { game: 0 };
+        uniqueModels.forEach(model => {
+          const displayName = getModelDisplayName(model).replace(/\s+/g, '');
+          initialPoint[displayName] = 1000;
+        });
+        chartPoints.push(initialPoint);
+
+        // Process each game
+        orderedGames.forEach((game: any, index: number) => {
+          const whiteModel = game.white_model;
+          const blackModel = game.black_model;
+          const whiteRating = ratings[whiteModel];
+          const blackRating = ratings[blackModel];
+
+          // Calculate expected scores
+          const whiteExpected = calculateExpectedScore(whiteRating, blackRating);
+          const blackExpected = calculateExpectedScore(blackRating, whiteRating);
+
+          // Determine actual scores
+          let whiteActual: number, blackActual: number;
+          if (game.winner === 'white') {
+            whiteActual = 1;
+            blackActual = 0;
+          } else if (game.winner === 'black') {
+            whiteActual = 0;
+            blackActual = 1;
+          } else {
+            whiteActual = 0.5;
+            blackActual = 0.5;
+          }
+
+          // Calculate new ratings
+          ratings[whiteModel] = calculateNewRating(whiteRating, whiteExpected, whiteActual);
+          ratings[blackModel] = calculateNewRating(blackRating, blackExpected, blackActual);
+
+          // Create data point
+          const dataPoint: ChartDataPoint = { game: index + 1 };
+          uniqueModels.forEach(model => {
+            const displayName = getModelDisplayName(model).replace(/\s+/g, '');
+            dataPoint[displayName] = ratings[model];
+          });
+          chartPoints.push(dataPoint);
+        });
+
+        setChartData(chartPoints);
+      } catch (error) {
+        console.error('Failed to fetch chart data:', error);
+      }
     };
 
     updateChartData();
@@ -131,7 +153,7 @@ export const PerformanceChart = () => {
             <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis
-                dataKey="time"
+                dataKey="game"
                 axisLine={false}
                 tickLine={false}
                 className="text-xs"

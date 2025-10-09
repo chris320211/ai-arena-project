@@ -1,6 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Activity, Users, Zap, TrendingUp } from "lucide-react";
-import { eloService } from "@/services/eloService";
 import { useEffect, useState } from "react";
 
 interface StatCard {
@@ -11,120 +10,130 @@ interface StatCard {
   trend: "up" | "down" | "stable";
 }
 
+const getModelDisplayName = (modelId: string): string => {
+  const names: Record<string, string> = {
+    'anthropic_claude_haiku': 'Claude 3 Haiku',
+    'anthropic_claude_sonnet': 'Claude 3.5 Sonnet',
+    'openai_gpt4o_mini': 'GPT-4o Mini',
+    'openai_gpt4o': 'GPT-4o',
+    'gemini_pro': 'Gemini Pro',
+  };
+  return names[modelId] || modelId;
+};
+
 export const StatsCards = () => {
   const [stats, setStats] = useState<StatCard[]>([]);
 
   useEffect(() => {
-    const updateStats = () => {
-      const ratings = eloService.getRatings();
-      const games = eloService.getRecentGames(100);
+    const updateStats = async () => {
+      try {
+        const [gamesResponse, modelsResponse] = await Promise.all([
+          fetch('http://localhost:8001/api/stats/games?limit=100'),
+          fetch('http://localhost:8001/api/stats/models')
+        ]);
 
-      // Filter to only show GPT-4o and Claude Haiku
-      const allowedModels = ['gpt-4o', 'claude-3-haiku-20240307'];
-      const filteredRatings = ratings.filter(r => allowedModels.includes(r.modelId));
-      const filteredGames = games.filter(game =>
-        allowedModels.includes(game.whiteModelId) && allowedModels.includes(game.blackModelId)
-      );
+        const gamesData = await gamesResponse.json();
+        const modelsData = await modelsResponse.json();
 
-      const totalGames = filteredGames.length;
-      const activeModels = filteredRatings.filter(r => r.gamesPlayed > 0).length;
-      const avgRating = filteredRatings.filter(r => r.gamesPlayed > 0).reduce((sum, r) => sum + r.rating, 0) / Math.max(1, activeModels);
-      const totalWins = filteredRatings.reduce((sum, r) => sum + r.wins, 0);
-      const totalPlayed = filteredRatings.reduce((sum, r) => sum + r.gamesPlayed, 0);
-      const winRate = totalPlayed > 0 ? (totalWins / totalPlayed) * 100 : 0;
+        const games = gamesData.games || [];
+        const ratings = modelsData.model_stats || [];
 
-      // Calculate average moves per game
-      const totalMoves = filteredGames.reduce((sum, game) => {
-        // Assuming we can get move count from game data, otherwise use a placeholder
-        return sum + (game.moves || 0);
-      }, 0);
-      const avgMoves = filteredGames.length > 0 ? Math.round(totalMoves / filteredGames.length) : 0;
+        const totalGames = games.length;
 
-      // Calculate longest win streak
-      let currentStreak = { modelId: '', count: 0, modelName: '' };
-      let longestStreak = { modelId: '', count: 0, modelName: '' };
-      let tempStreak = { modelId: '', count: 0 };
+        // Calculate average moves per game
+        const totalMoves = games.reduce((sum: number, game: any) => {
+          return sum + (game.moves || 0);
+        }, 0);
+        const avgMoves = games.length > 0 ? Math.round(totalMoves / games.length) : 0;
 
-      filteredGames.slice().reverse().forEach(game => {
-        const winner = game.winner === 'white' ? game.whiteModelId :
-                      game.winner === 'black' ? game.blackModelId : null;
+        // Calculate longest win streak
+        let currentStreak = { modelId: '', count: 0, modelName: '' };
+        let longestStreak = { modelId: '', count: 0, modelName: '' };
+        let tempStreak = { modelId: '', count: 0 };
 
-        if (winner && allowedModels.includes(winner)) {
-          if (tempStreak.modelId === winner) {
-            tempStreak.count++;
+        games.slice().reverse().forEach((game: any) => {
+          const winner = game.winner === 'white' ? game.white_model :
+                        game.winner === 'black' ? game.black_model : null;
+
+          if (winner) {
+            if (tempStreak.modelId === winner) {
+              tempStreak.count++;
+            } else {
+              tempStreak = { modelId: winner, count: 1 };
+            }
+
+            if (tempStreak.count > longestStreak.count) {
+              longestStreak = {
+                modelId: tempStreak.modelId,
+                count: tempStreak.count,
+                modelName: getModelDisplayName(tempStreak.modelId)
+              };
+            }
           } else {
-            tempStreak = { modelId: winner, count: 1 };
+            tempStreak = { modelId: '', count: 0 };
           }
+        });
 
-          if (tempStreak.count > longestStreak.count) {
-            longestStreak = {
-              modelId: tempStreak.modelId,
-              count: tempStreak.count,
-              modelName: eloService.getModelName(tempStreak.modelId)
+        // Current streak is the most recent
+        if (games.length > 0) {
+          const recentGame = games[0];
+          const recentWinner = recentGame.winner === 'white' ? recentGame.white_model :
+                              recentGame.winner === 'black' ? recentGame.black_model : null;
+
+          if (recentWinner) {
+            let streakCount = 0;
+            for (const game of games) {
+              const gameWinner = game.winner === 'white' ? game.white_model :
+                                game.winner === 'black' ? game.black_model : null;
+              if (gameWinner === recentWinner) {
+                streakCount++;
+              } else {
+                break;
+              }
+            }
+            currentStreak = {
+              modelId: recentWinner,
+              count: streakCount,
+              modelName: getModelDisplayName(recentWinner)
             };
           }
-        } else {
-          tempStreak = { modelId: '', count: 0 };
         }
-      });
 
-      // Current streak is the most recent
-      if (filteredGames.length > 0) {
-        const recentGame = filteredGames[0];
-        const recentWinner = recentGame.winner === 'white' ? recentGame.whiteModelId :
-                            recentGame.winner === 'black' ? recentGame.blackModelId : null;
-
-        if (recentWinner && allowedModels.includes(recentWinner)) {
-          let streakCount = 0;
-          for (const game of filteredGames) {
-            const gameWinner = game.winner === 'white' ? game.whiteModelId :
-                              game.winner === 'black' ? game.blackModelId : null;
-            if (gameWinner === recentWinner) {
-              streakCount++;
-            } else {
-              break;
-            }
+        const newStats: StatCard[] = [
+          {
+            title: "Total Games",
+            value: totalGames.toString(),
+            change: totalGames > 0 ? `${totalGames} completed` : "No games yet",
+            icon: Activity,
+            trend: "up"
+          },
+          {
+            title: "Avg Moves/Game",
+            value: avgMoves > 0 ? avgMoves.toString() : "0",
+            change: totalGames > 0 ? `${totalMoves} total moves` : "No games yet",
+            icon: TrendingUp,
+            trend: avgMoves > 30 ? "up" : "stable"
+          },
+          {
+            title: "Longest Win Streak",
+            value: longestStreak.count > 0 ? longestStreak.count.toString() : "0",
+            change: longestStreak.count > 0 ? longestStreak.modelName : "No streaks yet",
+            icon: Zap,
+            trend: longestStreak.count > 0 ? "up" : "stable"
+          },
+          {
+            title: "Current Streak",
+            value: currentStreak.count > 0 ? currentStreak.count.toString() : "0",
+            change: currentStreak.count > 0 ? currentStreak.modelName : "No active streak",
+            icon: Users,
+            trend: currentStreak.count > 2 ? "up" : "stable"
           }
-          currentStreak = {
-            modelId: recentWinner,
-            count: streakCount,
-            modelName: eloService.getModelName(recentWinner)
-          };
-        }
+        ];
+
+        setStats(newStats);
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
       }
-
-      const newStats: StatCard[] = [
-        {
-          title: "Total Games",
-          value: totalGames.toString(),
-          change: totalGames > 0 ? `${totalGames} completed` : "No games yet",
-          icon: Activity,
-          trend: "up"
-        },
-        {
-          title: "Avg Moves/Game",
-          value: avgMoves > 0 ? avgMoves.toString() : "0",
-          change: totalGames > 0 ? `${totalMoves} total moves` : "No games yet",
-          icon: TrendingUp,
-          trend: avgMoves > 30 ? "up" : "stable"
-        },
-        {
-          title: "Longest Win Streak",
-          value: longestStreak.count > 0 ? longestStreak.count.toString() : "0",
-          change: longestStreak.count > 0 ? longestStreak.modelName : "No streaks yet",
-          icon: Zap,
-          trend: longestStreak.count > 0 ? "up" : "stable"
-        },
-        {
-          title: "Current Streak",
-          value: currentStreak.count > 0 ? currentStreak.count.toString() : "0",
-          change: currentStreak.count > 0 ? currentStreak.modelName : "No active streak",
-          icon: Users,
-          trend: currentStreak.count > 2 ? "up" : "stable"
-        }
-      ];
-
-      setStats(newStats);
     };
 
     updateStats();
