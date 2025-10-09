@@ -421,26 +421,36 @@ const Index = () => {
   };
 
   const resetGame = async () => {
-    // Increment game key to force component remount and clear history
-    const newGameKey = gameKey + 1;
-    setGameKey(newGameKey);
-
-    // Clear everything
-    setSelectedSquare(null);
-    setValidMoves([]);
-    setLastMove(null);
-    setGameInProgress(false);
-    setAIResponse(null);
-    setThinkingSteps([]);
-    setShowAnalysis(false);
-
     try {
+      // First, reset backend state
       const response = await fetch('http://localhost:8001/reset', { method: 'POST' });
       if (!response.ok) {
         throw new Error('Failed to reset game');
       }
 
+      // Increment game key to force component remount and clear history
+      const newGameKey = gameKey + 1;
+      setGameKey(newGameKey);
+
+      // Clear all frontend state
+      setSelectedSquare(null);
+      setValidMoves([]);
+      setLastMove(null);
+      setGameInProgress(false);
+      setAIResponse(null);
+      setThinkingSteps([]);
+      setShowAnalysis(false);
+      setMoveHistory([]);
+      setCurrentMoveIndex(-1);
+
+      // Fetch fresh game state from backend
       await fetchGameState();
+
+      toast({
+        title: "Game Reset",
+        description: "Board has been reset to starting position",
+        variant: "default"
+      });
     } catch (error) {
       console.error('Error resetting game:', error);
       toast({

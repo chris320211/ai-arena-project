@@ -19,7 +19,13 @@ export const RecentMatches = () => {
   useEffect(() => {
     const updateMatches = () => {
       const games = eloService.getRecentGames(10);
-      const matches = games.map(game => ({
+      // Filter to only show games with GPT-4o and Claude Haiku
+      const allowedModels = ['gpt-4o', 'claude-3-haiku-20240307'];
+      const filteredGames = games.filter(game =>
+        allowedModels.includes(game.whiteModelId) && allowedModels.includes(game.blackModelId)
+      );
+
+      const matches = filteredGames.map(game => ({
         id: game.id,
         white: eloService.getModelName(game.whiteModelId),
         black: eloService.getModelName(game.blackModelId),

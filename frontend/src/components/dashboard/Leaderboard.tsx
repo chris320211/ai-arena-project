@@ -34,7 +34,11 @@ export const Leaderboard = () => {
   useEffect(() => {
     const updateLeaderboard = () => {
       const ratings = eloService.getRatings();
-      const leaderboardData = ratings.map((rating, index) => ({
+      // Filter to only show GPT-4o and Claude Haiku
+      const allowedModels = ['gpt-4o', 'claude-3-haiku-20240307'];
+      const filteredRatings = ratings.filter(r => allowedModels.includes(r.modelId));
+
+      const leaderboardData = filteredRatings.map((rating, index) => ({
         rank: index + 1,
         name: eloService.getModelName(rating.modelId),
         elo: rating.rating,

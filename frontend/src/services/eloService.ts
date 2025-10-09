@@ -20,6 +20,7 @@ export interface GameResult {
   whiteRatingAfter: number;
   blackRatingAfter: number;
   ratingChange: number;
+  moves?: number;
 }
 
 export interface EloHistoryEntry {

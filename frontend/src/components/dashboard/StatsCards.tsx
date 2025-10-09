@@ -19,12 +19,79 @@ export const StatsCards = () => {
       const ratings = eloService.getRatings();
       const games = eloService.getRecentGames(100);
 
-      const totalGames = games.length;
-      const activeModels = ratings.filter(r => r.gamesPlayed > 0).length;
-      const avgRating = ratings.filter(r => r.gamesPlayed > 0).reduce((sum, r) => sum + r.rating, 0) / Math.max(1, activeModels);
-      const totalWins = ratings.reduce((sum, r) => sum + r.wins, 0);
-      const totalPlayed = ratings.reduce((sum, r) => sum + r.gamesPlayed, 0);
+      // Filter to only show GPT-4o and Claude Haiku
+      const allowedModels = ['gpt-4o', 'claude-3-haiku-20240307'];
+      const filteredRatings = ratings.filter(r => allowedModels.includes(r.modelId));
+      const filteredGames = games.filter(game =>
+        allowedModels.includes(game.whiteModelId) && allowedModels.includes(game.blackModelId)
+      );
+
+      const totalGames = filteredGames.length;
+      const activeModels = filteredRatings.filter(r => r.gamesPlayed > 0).length;
+      const avgRating = filteredRatings.filter(r => r.gamesPlayed > 0).reduce((sum, r) => sum + r.rating, 0) / Math.max(1, activeModels);
+      const totalWins = filteredRatings.reduce((sum, r) => sum + r.wins, 0);
+      const totalPlayed = filteredRatings.reduce((sum, r) => sum + r.gamesPlayed, 0);
       const winRate = totalPlayed > 0 ? (totalWins / totalPlayed) * 100 : 0;
+
+      // Calculate average moves per game
+      const totalMoves = filteredGames.reduce((sum, game) => {
+        // Assuming we can get move count from game data, otherwise use a placeholder
+        return sum + (game.moves || 0);
+      }, 0);
+      const avgMoves = filteredGames.length > 0 ? Math.round(totalMoves / filteredGames.length) : 0;
+
+      // Calculate longest win streak
+      let currentStreak = { modelId: '', count: 0, modelName: '' };
+      let longestStreak = { modelId: '', count: 0, modelName: '' };
+      let tempStreak = { modelId: '', count: 0 };
+
+      filteredGames.slice().reverse().forEach(game => {
+        const winner = game.winner === 'white' ? game.whiteModelId :
+                      game.winner === 'black' ? game.blackModelId : null;
+
+        if (winner && allowedModels.includes(winner)) {
+          if (tempStreak.modelId === winner) {
+            tempStreak.count++;
+          } else {
+            tempStreak = { modelId: winner, count: 1 };
+          }
+
+          if (tempStreak.count > longestStreak.count) {
+            longestStreak = {
+              modelId: tempStreak.modelId,
+              count: tempStreak.count,
+              modelName: eloService.getModelName(tempStreak.modelId)
+            };
+          }
+        } else {
+          tempStreak = { modelId: '', count: 0 };
+        }
+      });
+
+      // Current streak is the most recent
+      if (filteredGames.length > 0) {
+        const recentGame = filteredGames[0];
+        const recentWinner = recentGame.winner === 'white' ? recentGame.whiteModelId :
+                            recentGame.winner === 'black' ? recentGame.blackModelId : null;
+
+        if (recentWinner && allowedModels.includes(recentWinner)) {
+          let streakCount = 0;
+          for (const game of filteredGames) {
+            const gameWinner = game.winner === 'white' ? game.whiteModelId :
+                              game.winner === 'black' ? game.blackModelId : null;
+            if (gameWinner === recentWinner) {
+              streakCount++;
+            } else {
+              break;
+            }
+          }
+          currentStreak = {
+            modelId: recentWinner,
+            count: streakCount,
+            modelName: eloService.getModelName(recentWinner)
+          };
+        }
+      }
 
       const newStats: StatCard[] = [
         {
@@ -35,25 +102,25 @@ export const StatsCards = () => {
           trend: "up"
         },
         {
-          title: "Active Models",
-          value: activeModels.toString(),
-          change: `${ratings.length - activeModels} inactive`,
-          icon: Users,
-          trend: activeModels > 0 ? "up" : "stable"
-        },
-        {
-          title: "Avg ELO Rating",
-          value: Math.round(avgRating).toString(),
-          change: activeModels > 0 ? "Dynamic rating" : "Starting at 1000",
+          title: "Avg Moves/Game",
+          value: avgMoves > 0 ? avgMoves.toString() : "0",
+          change: totalGames > 0 ? `${totalMoves} total moves` : "No games yet",
           icon: TrendingUp,
-          trend: "stable"
+          trend: avgMoves > 30 ? "up" : "stable"
         },
         {
-          title: "Win Rate Balance",
-          value: `${winRate.toFixed(1)}%`,
-          change: totalPlayed > 0 ? `${totalPlayed} total matches` : "No data yet",
+          title: "Longest Win Streak",
+          value: longestStreak.count > 0 ? longestStreak.count.toString() : "0",
+          change: longestStreak.count > 0 ? longestStreak.modelName : "No streaks yet",
           icon: Zap,
-          trend: winRate > 50 ? "up" : winRate < 50 ? "down" : "stable"
+          trend: longestStreak.count > 0 ? "up" : "stable"
+        },
+        {
+          title: "Current Streak",
+          value: currentStreak.count > 0 ? currentStreak.count.toString() : "0",
+          change: currentStreak.count > 0 ? currentStreak.modelName : "No active streak",
+          icon: Users,
+          trend: currentStreak.count > 2 ? "up" : "stable"
         }
       ];
 

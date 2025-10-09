@@ -25,8 +25,11 @@ export const PerformanceChart = () => {
       const history = eloService.getEloHistory(100);
       const ratings = eloService.getRatings();
 
-      // Get all unique model IDs that have played games
-      const playedModelIds = ratings.filter(r => r.gamesPlayed > 0).map(r => r.modelId);
+      // Filter to only show GPT-4o and Claude Haiku
+      const allowedModels = ['gpt-4o', 'claude-3-haiku-20240307'];
+      const playedModelIds = ratings
+        .filter(r => r.gamesPlayed > 0 && allowedModels.includes(r.modelId))
+        .map(r => r.modelId);
       const names = playedModelIds.map(id => eloService.getModelName(id).replace(/\s+/g, ''));
       setModelNames(names);
 
