@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import { API_URL } from "@/config/api";
 
 interface ChartDataPoint {
   game: number;
@@ -42,7 +43,7 @@ export const PerformanceChart = () => {
   useEffect(() => {
     const updateChartData = async () => {
       try {
-        const gamesResponse = await fetch('http://localhost:8001/api/stats/games?limit=100');
+        const gamesResponse = await fetch(`${API_URL}/api/stats/games?limit=100`);
         const gamesData = await gamesResponse.json();
         const games = gamesData.games || [];
 

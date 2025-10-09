@@ -6,6 +6,7 @@ import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight, BarChart3 
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import { eloService } from '@/services/eloService';
+import { API_URL } from '@/config/api';
 
 import ChessBoard, { ChessPiece, ChessMove } from '@/components/ChessBoard';
 import ModelSelector, { AIModel, PlayerConfig, AI_MODELS } from '@/components/ModelSelector';
@@ -172,7 +173,7 @@ const Index = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 45000);
 
-      const response = await fetch('http://localhost:8001/ai-step', {
+      const response = await fetch(`${API_URL}/ai-step`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -271,7 +272,7 @@ const Index = () => {
       const x = 8 - parseInt(rank);
       const y = file.charCodeAt(0) - 'a'.charCodeAt(0);
       
-      const response = await fetch(`http://localhost:8001/moves?x=${x}&y=${y}`);
+      const response = await fetch(`${API_URL}/moves?x=${x}&y=${y}`);
       if (!response.ok) {
         throw new Error('Failed to get moves');
       }
@@ -368,7 +369,7 @@ const Index = () => {
     setThinkingSteps([]);
 
     try {
-      const response = await fetch('http://localhost:8001/new', { method: 'POST' });
+      const response = await fetch(`${API_URL}/new`, { method: 'POST' });
       if (!response.ok) {
         throw new Error('Failed to start new game');
       }
@@ -377,7 +378,7 @@ const Index = () => {
       const whiteBot = playerConfig.white === 'human' ? 'human' : playerConfig.white.id;
       const blackBot = playerConfig.black === 'human' ? 'human' : playerConfig.black.id;
 
-      const botResponse = await fetch('http://localhost:8001/set-bots', {
+      const botResponse = await fetch(`${API_URL}/set-bots`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -423,7 +424,7 @@ const Index = () => {
   const resetGame = async () => {
     try {
       // First, reset backend state
-      const response = await fetch('http://localhost:8001/reset', { method: 'POST' });
+      const response = await fetch(`${API_URL}/reset`, { method: 'POST' });
       if (!response.ok) {
         throw new Error('Failed to reset game');
       }
@@ -494,7 +495,7 @@ const Index = () => {
   // Fetch game state from backend
   const fetchGameState = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:8001/state');
+      const response = await fetch(`${API_URL}/state`);
       if (!response.ok) {
         throw new Error('Failed to fetch game state');
       }
@@ -525,7 +526,7 @@ const Index = () => {
       const toX = 8 - parseInt(toRank);
       const toY = toFile.charCodeAt(0) - 'a'.charCodeAt(0);
 
-      const response = await fetch('http://localhost:8001/move', {
+      const response = await fetch(`${API_URL}/move`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -593,21 +594,21 @@ const Index = () => {
   const fetchStatistics = useCallback(async () => {
     try {
       // Fetch model stats
-      const modelResponse = await fetch('http://localhost:8001/api/stats/models');
+      const modelResponse = await fetch(`${API_URL}/api/stats/models`);
       if (modelResponse.ok) {
         const modelData = await modelResponse.json();
         setModelStats(modelData.model_stats || []);
       }
 
       // Fetch recent games
-      const gamesResponse = await fetch('http://localhost:8001/api/stats/games?limit=20');
+      const gamesResponse = await fetch(`${API_URL}/api/stats/games?limit=20`);
       if (gamesResponse.ok) {
         const gamesData = await gamesResponse.json();
         setGameResults(gamesData.games || []);
       }
 
       // Fetch ELO history
-      const eloResponse = await fetch('http://localhost:8001/api/stats/elo-history?limit=100');
+      const eloResponse = await fetch(`${API_URL}/api/stats/elo-history?limit=100`);
       if (eloResponse.ok) {
         const eloData = await eloResponse.json();
         setEloHistory(eloData.elo_history || []);

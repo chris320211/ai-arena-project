@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RotateCcw, X, Circle, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { API_URL } from '@/config/api';
 
 type Player = 'X' | 'O' | null;
 type Board2D = (Player)[][];
@@ -31,7 +32,7 @@ const TicTacToe = ({ className }: TicTacToeProps) => {
 
   const fetchGameState = async () => {
     try {
-      const response = await fetch('http://localhost:8001/tictactoe/state');
+      const response = await fetch(`${API_URL}/tictactoe/state`);
       const state = await response.json();
       setGameState(state);
     } catch (error) {
@@ -52,7 +53,7 @@ const TicTacToe = ({ className }: TicTacToeProps) => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8001/tictactoe/move', {
+      const response = await fetch(`${API_URL}/tictactoe/move`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +103,7 @@ const TicTacToe = ({ className }: TicTacToeProps) => {
   const resetGame = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8001/tictactoe/reset', {
+      const response = await fetch(`${API_URL}/tictactoe/reset`, {
         method: 'POST',
       });
       const newState = await response.json();

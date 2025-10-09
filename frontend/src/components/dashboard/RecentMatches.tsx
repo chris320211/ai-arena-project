@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
+import { API_URL } from "@/config/api";
 
 interface RecentMatch {
   id: string;
@@ -29,7 +30,7 @@ export const RecentMatches = () => {
   useEffect(() => {
     const updateMatches = async () => {
       try {
-        const response = await fetch('http://localhost:8001/api/stats/games?limit=10');
+        const response = await fetch(`${API_URL}/api/stats/games?limit=10`);
         const data = await response.json();
         const games = data.games || [];
 

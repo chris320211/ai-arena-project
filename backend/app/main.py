@@ -409,9 +409,17 @@ async def lifespan(app: FastAPI):
     await close_mongo_connection()
 
 app = FastAPI(lifespan=lifespan)
+
+# Configure CORS origins from environment variable or allow all for development
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*")
+if allowed_origins == "*":
+    origins = ["*"]
+else:
+    origins = [origin.strip() for origin in allowed_origins.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

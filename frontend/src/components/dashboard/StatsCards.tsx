@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Activity, Users, Zap, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import { API_URL } from "@/config/api";
 
 interface StatCard {
   title: string;
@@ -28,8 +29,8 @@ export const StatsCards = () => {
     const updateStats = async () => {
       try {
         const [gamesResponse, modelsResponse] = await Promise.all([
-          fetch('http://localhost:8001/api/stats/games?limit=100'),
-          fetch('http://localhost:8001/api/stats/models')
+          fetch(`${API_URL}/api/stats/games?limit=100`),
+          fetch(`${API_URL}/api/stats/models`)
         ]);
 
         const gamesData = await gamesResponse.json();

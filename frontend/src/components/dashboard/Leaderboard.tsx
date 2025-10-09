@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Crown, Medal, Award } from "lucide-react";
 import { useEffect, useState } from "react";
+import { API_URL } from "@/config/api";
 
 interface LeaderboardModel {
   rank: number;
@@ -55,7 +56,7 @@ export const Leaderboard = () => {
   useEffect(() => {
     const updateLeaderboard = async () => {
       try {
-        const response = await fetch('http://localhost:8001/api/stats/models');
+        const response = await fetch(`${API_URL}/api/stats/models`);
         const data = await response.json();
 
         const leaderboardData: LeaderboardModel[] = data.model_stats
