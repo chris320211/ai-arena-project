@@ -65,7 +65,8 @@ async def connect_to_mongo():
     """Create database connection"""
     mongodb_url = os.getenv("MONGODB_URL", "mongodb://localhost:27017/ai-arena")
     database.client = AsyncIOMotorClient(mongodb_url)
-    database.database = database.client.get_default_database()
+    # Explicitly use 'ai-arena' database name
+    database.database = database.client["ai-arena"]
     
     # Test connection
     try:
