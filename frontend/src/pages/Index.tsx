@@ -1,14 +1,54 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, RotateCcw } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { Link } from 'react-router-dom';
+import { eloService } from '@/services/eloService';
 
-import { AIModel, PlayerConfig, AI_MODELS } from '@/components/ModelSelector';
-import { AIResponse, ThinkingStep } from '@/components/ThinkingProcess';
-import { GameResult, ModelStats, EloHistoryEntry } from '@/components/GameStats';
-import TicTacToe from '@/components/TicTacToe';
-import IndexContent from './Index-content';
+import ChessBoard, { ChessPiece, ChessMove } from '@/components/ChessBoard';
+import ModelSelector, { AIModel, PlayerConfig, AI_MODELS } from '@/components/ModelSelector';
+import ThinkingProcess, { AIResponse, ThinkingStep } from '@/components/ThinkingProcess';
+import GameStats, { GameResult, ModelStats, EloHistoryEntry } from '@/components/GameStats';
+
+// Initial chess position
+const INITIAL_POSITION: ChessPiece[] = [
+  // White pieces
+  { type: 'rook', color: 'white', position: 'a1' },
+  { type: 'knight', color: 'white', position: 'b1' },
+  { type: 'bishop', color: 'white', position: 'c1' },
+  { type: 'queen', color: 'white', position: 'd1' },
+  { type: 'king', color: 'white', position: 'e1' },
+  { type: 'bishop', color: 'white', position: 'f1' },
+  { type: 'knight', color: 'white', position: 'g1' },
+  { type: 'rook', color: 'white', position: 'h1' },
+  { type: 'pawn', color: 'white', position: 'a2' },
+  { type: 'pawn', color: 'white', position: 'b2' },
+  { type: 'pawn', color: 'white', position: 'c2' },
+  { type: 'pawn', color: 'white', position: 'd2' },
+  { type: 'pawn', color: 'white', position: 'e2' },
+  { type: 'pawn', color: 'white', position: 'f2' },
+  { type: 'pawn', color: 'white', position: 'g2' },
+  { type: 'pawn', color: 'white', position: 'h2' },
+  // Black pieces
+  { type: 'rook', color: 'black', position: 'a8' },
+  { type: 'knight', color: 'black', position: 'b8' },
+  { type: 'bishop', color: 'black', position: 'c8' },
+  { type: 'queen', color: 'black', position: 'd8' },
+  { type: 'king', color: 'black', position: 'e8' },
+  { type: 'bishop', color: 'black', position: 'f8' },
+  { type: 'knight', color: 'black', position: 'g8' },
+  { type: 'rook', color: 'black', position: 'h8' },
+  { type: 'pawn', color: 'black', position: 'a7' },
+  { type: 'pawn', color: 'black', position: 'b7' },
+  { type: 'pawn', color: 'black', position: 'c7' },
+  { type: 'pawn', color: 'black', position: 'd7' },
+  { type: 'pawn', color: 'black', position: 'e7' },
+  { type: 'pawn', color: 'black', position: 'f7' },
+  { type: 'pawn', color: 'black', position: 'g7' },
+  { type: 'pawn', color: 'black', position: 'h7' },
+];
 
 // Mock data for demonstration
 const MOCK_GAME_RESULTS: GameResult[] = [
@@ -36,7 +76,7 @@ const MOCK_GAME_RESULTS: GameResult[] = [
 
 const MOCK_MODEL_STATS: ModelStats[] = [
   {
-    model_id: 'gpt4',
+    modelId: 'gpt4',
     gamesPlayed: 25,
     wins: 18,
     losses: 5,
@@ -47,7 +87,7 @@ const MOCK_MODEL_STATS: ModelStats[] = [
     ratingChange: 25
   },
   {
-    model_id: 'claude',
+    modelId: 'claude',
     gamesPlayed: 22,
     wins: 14,
     losses: 6,
@@ -58,70 +98,29 @@ const MOCK_MODEL_STATS: ModelStats[] = [
     ratingChange: -15
   },
   {
-    model_id: 'gemini',
+    modelId: 'gemini',
     gamesPlayed: 18,
     wins: 10,
     losses: 6,
     draws: 2,
     winRate: 55.6,
-    avgMoveTime: 1800,
-    rating: 2220,
-    ratingChange: 8
+    avgMoveTime: 1400,
+    rating: 2320,
+    ratingChange: 10
   }
 ];
 
-// Initial chess position
-const getInitialPosition = () => {
-  return [
-    // Black pieces
-    { type: 'rook', color: 'black', position: 'a8' },
-    { type: 'knight', color: 'black', position: 'b8' },
-    { type: 'bishop', color: 'black', position: 'c8' },
-    { type: 'queen', color: 'black', position: 'd8' },
-    { type: 'king', color: 'black', position: 'e8' },
-    { type: 'bishop', color: 'black', position: 'f8' },
-    { type: 'knight', color: 'black', position: 'g8' },
-    { type: 'rook', color: 'black', position: 'h8' },
-    { type: 'pawn', color: 'black', position: 'a7' },
-    { type: 'pawn', color: 'black', position: 'b7' },
-    { type: 'pawn', color: 'black', position: 'c7' },
-    { type: 'pawn', color: 'black', position: 'd7' },
-    { type: 'pawn', color: 'black', position: 'e7' },
-    { type: 'pawn', color: 'black', position: 'f7' },
-    { type: 'pawn', color: 'black', position: 'g7' },
-    { type: 'pawn', color: 'black', position: 'h7' },
-    // White pieces
-    { type: 'rook', color: 'white', position: 'a1' },
-    { type: 'knight', color: 'white', position: 'b1' },
-    { type: 'bishop', color: 'white', position: 'c1' },
-    { type: 'queen', color: 'white', position: 'd1' },
-    { type: 'king', color: 'white', position: 'e1' },
-    { type: 'bishop', color: 'white', position: 'f1' },
-    { type: 'knight', color: 'white', position: 'g1' },
-    { type: 'rook', color: 'white', position: 'h1' },
-    { type: 'pawn', color: 'white', position: 'a2' },
-    { type: 'pawn', color: 'white', position: 'b2' },
-    { type: 'pawn', color: 'white', position: 'c2' },
-    { type: 'pawn', color: 'white', position: 'd2' },
-    { type: 'pawn', color: 'white', position: 'e2' },
-    { type: 'pawn', color: 'white', position: 'f2' },
-    { type: 'pawn', color: 'white', position: 'g2' },
-    { type: 'pawn', color: 'white', position: 'h2' },
-  ];
-};
-
 const Index = () => {
-  // Tab navigation state
-  const [activeTab, setActiveTab] = useState('chess');
-
-  // Chess-related state (keep existing state from Index-content)
-  const [position, setPosition] = useState<any[]>(getInitialPosition());
+  const [position, setPosition] = useState<ChessPiece[]>(INITIAL_POSITION);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [validMoves, setValidMoves] = useState<string[]>([]);
   const [currentTurn, setCurrentTurn] = useState<'white' | 'black'>('white');
   const [gameInProgress, setGameInProgress] = useState(false);
-  const [lastMove, setLastMove] = useState<any>(null);
-
+  const [lastMove, setLastMove] = useState<ChessMove | null>(null);
+  const [gameKey, setGameKey] = useState(0); // Force re-init on new game
+  const [moveHistory, setMoveHistory] = useState<{position: ChessPiece[], turn: 'white' | 'black', move: ChessMove | null}[]>([]);
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
+  
   // AI-related state
   const [playerConfig, setPlayerConfig] = useState<PlayerConfig>({
     white: 'human',
@@ -130,41 +129,244 @@ const Index = () => {
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [aiResponse, setAIResponse] = useState<AIResponse | null>(null);
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
-  // Game statistics
-  const [gameResults, setGameResults] = useState<GameResult[]>(MOCK_GAME_RESULTS);
-  const [modelStats, setModelStats] = useState<ModelStats[]>(MOCK_MODEL_STATS);
+  // Reset move history when game key changes
+  useEffect(() => {
+    setMoveHistory([]);
+    setCurrentMoveIndex(-1);
+  }, [gameKey]);
+
+  // Game statistics - now loaded from API
+  const [gameResults, setGameResults] = useState<GameResult[]>([]);
+  const [modelStats, setModelStats] = useState<ModelStats[]>([]);
   const [eloHistory, setEloHistory] = useState<EloHistoryEntry[]>([]);
 
-  // Additional state for backend integration
-  const [gameKey, setGameKey] = useState(0);
-  const [showAnalysis, setShowAnalysis] = useState(false);
-  const [moveHistory, setMoveHistory] = useState<any[]>([]);
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
+  const getCurrentPlayer = () => {
+    return playerConfig[currentTurn];
+  };
 
-  const handleSquareClick = useCallback((square: string) => {
-    // Placeholder for chess logic
+  const isAITurn = () => {
+    return getCurrentPlayer() !== 'human';
+  };
+
+  // Trigger AI move using backend
+  const triggerAIMove = useCallback(async () => {
+    if (!gameInProgress || !isAITurn() || isAIThinking) {
+      return;
+    }
+
+    setIsAIThinking(true);
+    setThinkingSteps([]);
+
+    // Add thinking step
+    setThinkingSteps([{
+      id: '1',
+      type: 'evaluation',
+      content: 'AI is analyzing the position...',
+      timestamp: Date.now()
+    }]);
+
+    try {
+      // Add 45 second timeout to prevent hanging (accounting for 10s delay + API time)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+      const response = await fetch('http://localhost:8001/ai-step', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error('AI move failed');
+      }
+
+      const data = await response.json();
+      
+      // Update board state
+      const frontendPosition = convertBackendToFrontend(data.board);
+      const moveObj = data.last_move ? { 
+        from: data.last_move.from, 
+        to: data.last_move.to, 
+        piece: frontendPosition.find(p => p.position === data.last_move.to)!
+      } : null;
+      
+      setPosition(frontendPosition);
+      setCurrentTurn(data.turn);
+      setLastMove(moveObj);
+      
+      // Save to history - data.turn is NEXT player's turn, so previous player made the move
+      const playerWhoMoved = data.turn === 'white' ? 'black' : 'white';
+      saveToHistory(frontendPosition, data.turn, moveObj);
+
+      // Update thinking steps with result
+      setThinkingSteps(prev => [...prev, {
+        id: '2',
+        type: 'decision',
+        content: `AI played ${data.last_move?.from} to ${data.last_move?.to}`,
+        move: `${data.last_move?.from}-${data.last_move?.to}`,
+        confidence: 85,
+        timestamp: Date.now()
+      }]);
+
+      // Check game status
+      if (data.status?.checkmate) {
+        const winner = data.turn === 'white' ? 'black' : 'white';
+        toast({
+          title: "Checkmate!",
+          description: `${winner === 'white' ? 'White' : 'Black'} wins!`,
+          variant: "default"
+        });
+        setGameInProgress(false);
+        setShowAnalysis(false);
+        recordGameResult(winner);
+      } else if (data.status?.check) {
+        toast({
+          title: "Check!",
+          description: `${data.turn.charAt(0).toUpperCase() + data.turn.slice(1)} is in check`,
+          variant: "default"
+        });
+      } else if (data.status?.stalemate) {
+        toast({
+          title: "Stalemate!",
+          description: "The game is a draw",
+          variant: "default"
+        });
+        setGameInProgress(false);
+        setShowAnalysis(false);
+        recordGameResult('draw');
+      }
+
+    } catch (error) {
+      console.error('Error triggering AI move:', error);
+      // Only show error if it's not an abort error
+      if (error instanceof Error && error.name !== 'AbortError') {
+        toast({
+          title: "AI Error",
+          description: "Failed to get AI move",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsAIThinking(false);
+    }
+  }, [gameInProgress, currentTurn, playerConfig, position]);
+
+  // Auto-trigger AI moves
+  useEffect(() => {
+    if (gameInProgress && isAITurn() && !isAIThinking) {
+      triggerAIMove();
+    }
+  }, [gameInProgress, currentTurn, isAIThinking, triggerAIMove]);
+
+  const getValidMoves = useCallback(async (square: string) => {
+    try {
+      const file = square[0];
+      const rank = square[1];
+      const x = 8 - parseInt(rank);
+      const y = file.charCodeAt(0) - 'a'.charCodeAt(0);
+      
+      const response = await fetch(`http://localhost:8001/moves?x=${x}&y=${y}`);
+      if (!response.ok) {
+        throw new Error('Failed to get moves');
+      }
+      
+      const data = await response.json();
+      const moves = data.moves.map(([moveX, moveY]: [number, number]) => {
+        const moveFile = String.fromCharCode('a'.charCodeAt(0) + moveY);
+        const moveRank = (8 - moveX).toString();
+        return moveFile + moveRank;
+      });
+      
+      return moves;
+    } catch (error) {
+      console.error('Error getting valid moves:', error);
+      return [];
+    }
   }, []);
 
-  const onConfigChange = useCallback((config: PlayerConfig) => {
-    setPlayerConfig(config);
-  }, []);
+  const handleSquareClick = useCallback(async (square: string) => {
+    if (isAIThinking || !gameInProgress) return;
 
-  const onStartGame = useCallback(() => {
-    setGameInProgress(true);
-  }, []);
+    if (isAITurn()) {
+      toast({
+        title: "AI Turn",
+        description: "Wait for the AI to make its move",
+        variant: "default"
+      });
+      return;
+    }
 
-  const onResetGame = useCallback(() => {
-    setGameInProgress(false);
-    setPosition(getInitialPosition());
+    const piece = position.find(p => p.position === square);
+    
+    if (selectedSquare === null) {
+      // Selecting a piece
+      if (piece && piece.color === currentTurn) {
+        setSelectedSquare(square);
+        const moves = await getValidMoves(square);
+        setValidMoves(moves);
+      }
+    } else {
+      // Making a move
+      if (validMoves.includes(square)) {
+        const success = await makeBackendMove(selectedSquare, square);
+        if (success) {
+          const movingPiece = position.find(p => p.position === selectedSquare);
+          if (movingPiece) {
+            setLastMove({ from: selectedSquare, to: square, piece: movingPiece, captured: piece });
+          }
+        }
+      }
+      setSelectedSquare(null);
+      setValidMoves([]);
+    }
+  }, [selectedSquare, position, currentTurn, validMoves, gameInProgress, isAIThinking, getValidMoves]);
+
+  const handleMove = useCallback((move: ChessMove) => {
+    // Update position
+    const newPosition = position.map(p => {
+      if (p.position === move.from) {
+        return { ...p, position: move.to, hasMoved: true };
+      }
+      return p;
+    }).filter(p => p.position !== move.to || p === position.find(piece => piece.position === move.from));
+
+    // Add captured piece if any
+    if (move.captured) {
+      // Remove captured piece (already filtered above)
+    }
+
+    setPosition(newPosition);
+    setLastMove(move);
+    setCurrentTurn(currentTurn === 'white' ? 'black' : 'white');
     setSelectedSquare(null);
     setValidMoves([]);
-    setCurrentTurn('white');
-    setLastMove(null);
-  }, []);
+
+    toast({
+      title: "Move Made",
+      description: `${move.piece.type} ${move.from} → ${move.to}`,
+      variant: "default"
+    });
+  }, [position, currentTurn]);
 
 
   const startNewGame = async () => {
+    // Force complete reset by changing game key
+    const newGameKey = gameKey + 1;
+    setGameKey(newGameKey);
+
+    // Clear other state
+    setSelectedSquare(null);
+    setValidMoves([]);
+    setLastMove(null);
+    setAIResponse(null);
+    setThinkingSteps([]);
+
     try {
       const response = await fetch('http://localhost:8001/new', { method: 'POST' });
       if (!response.ok) {
@@ -191,14 +393,16 @@ const Index = () => {
       }
 
       await fetchGameState();
-      setSelectedSquare(null);
-      setValidMoves([]);
-      setLastMove(null);
       setGameInProgress(true);
-      setAIResponse(null);
-      setThinkingSteps([]);
-      setMoveHistory([]);
-      setCurrentMoveIndex(-1);
+      setShowAnalysis(true);
+
+      // Scroll to center the board on the screen
+      setTimeout(() => {
+        const boardElement = document.querySelector('.max-w-3xl');
+        if (boardElement) {
+          boardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
 
       toast({
         title: "New Game Started",
@@ -308,145 +512,290 @@ const Index = () => {
     }
   }, []);
 
-  const getCurrentAIModel = () => {
-    return playerConfig[currentTurn];
+  // Make move via backend API
+  const makeBackendMove = useCallback(async (from: string, to: string) => {
+    try {
+      const fromFile = from[0];
+      const fromRank = from[1];
+      const fromX = 8 - parseInt(fromRank);
+      const fromY = fromFile.charCodeAt(0) - 'a'.charCodeAt(0);
+      
+      const toFile = to[0];
+      const toRank = to[1];
+      const toX = 8 - parseInt(toRank);
+      const toY = toFile.charCodeAt(0) - 'a'.charCodeAt(0);
+
+      const response = await fetch('http://localhost:8001/move', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from_sq: { x: fromX, y: fromY },
+          to_sq: { x: toX, y: toY }
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Move failed');
+      }
+
+      const data = await response.json();
+      const frontendPosition = convertBackendToFrontend(data.board);
+      setPosition(frontendPosition);
+      setCurrentTurn(data.turn);
+      
+      // Save to history for human moves too
+      const moveObj = { from, to, piece: frontendPosition.find(p => p.position === to)! };
+      saveToHistory(frontendPosition, data.turn, moveObj);
+      
+      if (data.status?.checkmate) {
+        const winner = data.turn === 'white' ? 'black' : 'white';
+        toast({
+          title: "Checkmate!",
+          description: `${winner === 'white' ? 'White' : 'Black'} wins!`,
+          variant: "default"
+        });
+        setGameInProgress(false);
+        setShowAnalysis(false);
+        recordGameResult(winner);
+      } else if (data.status?.check) {
+        toast({
+          title: "Check!",
+          description: `${data.turn.charAt(0).toUpperCase() + data.turn.slice(1)} is in check`,
+          variant: "default"
+        });
+      } else if (data.status?.stalemate) {
+        toast({
+          title: "Stalemate!",
+          description: "The game is a draw",
+          variant: "default"
+        });
+        setGameInProgress(false);
+        setShowAnalysis(false);
+        recordGameResult('draw');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error making move:', error);
+      toast({
+        title: "Move Error",
+        description: error instanceof Error ? error.message : "Failed to make move",
+        variant: "destructive"
+      });
+      return false;
+    }
+  }, []);
+
+  // Fetch statistics from API
+  const fetchStatistics = useCallback(async () => {
+    try {
+      // Fetch model stats
+      const modelResponse = await fetch('http://localhost:8001/api/stats/models');
+      if (modelResponse.ok) {
+        const modelData = await modelResponse.json();
+        setModelStats(modelData.model_stats || []);
+      }
+
+      // Fetch recent games
+      const gamesResponse = await fetch('http://localhost:8001/api/stats/games?limit=20');
+      if (gamesResponse.ok) {
+        const gamesData = await gamesResponse.json();
+        setGameResults(gamesData.games || []);
+      }
+
+      // Fetch ELO history
+      const eloResponse = await fetch('http://localhost:8001/api/stats/elo-history?limit=100');
+      if (eloResponse.ok) {
+        const eloData = await eloResponse.json();
+        setEloHistory(eloData.elo_history || []);
+      }
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+    }
+  }, []);
+
+  // Initialize game state on component mount
+  useEffect(() => {
+    fetchGameState();
+    fetchStatistics();
+  }, [fetchGameState, fetchStatistics]);
+
+  // Refresh statistics when games complete
+  useEffect(() => {
+    if (!gameInProgress) {
+      // Delay to allow backend to save game results
+      const timeoutId = setTimeout(() => {
+        fetchStatistics();
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [gameInProgress, fetchStatistics]);
+
+  const getCurrentAIModel = (): AIModel | null => {
+    const currentPlayer = getCurrentPlayer();
+    return currentPlayer !== 'human' && typeof currentPlayer === 'object' ? currentPlayer : null;
   };
+
+  // Record game result in ELO system
+  const recordGameResult = (winner: 'white' | 'black' | 'draw') => {
+    const whitePlayer = playerConfig.white;
+    const blackPlayer = playerConfig.black;
+
+    // Only record games between AI models (skip human games for now)
+    if (whitePlayer !== 'human' && blackPlayer !== 'human') {
+      try {
+        const result = eloService.recordGameResult(
+          whitePlayer.id,
+          blackPlayer.id,
+          winner
+        );
+
+        const whiteChange = result.whiteRatingAfter - result.whiteRatingBefore;
+        const blackChange = result.blackRatingAfter - result.blackRatingBefore;
+
+        toast({
+          title: "ELO Updated",
+          description: `${whitePlayer.name}: ${whiteChange > 0 ? '+' : ''}${whiteChange}, ${blackPlayer.name}: ${blackChange > 0 ? '+' : ''}${blackChange}`,
+          variant: "default"
+        });
+      } catch (error) {
+        console.error('Error recording ELO result:', error);
+      }
+    }
+  };
+
+  // Move navigation functions
+  const goBackMove = () => {
+    if (currentMoveIndex > 0) {
+      const previousMove = moveHistory[currentMoveIndex - 1];
+      setPosition(previousMove.position);
+      setCurrentTurn(previousMove.turn);
+      setLastMove(previousMove.move);
+      setCurrentMoveIndex(currentMoveIndex - 1);
+    } else if (currentMoveIndex === 0) {
+      // Go to initial position
+      setPosition(INITIAL_POSITION);
+      setCurrentTurn('white');
+      setLastMove(null);
+      setCurrentMoveIndex(-1);
+    }
+  };
+
+  const goForwardMove = () => {
+    if (currentMoveIndex < moveHistory.length - 1) {
+      const nextMove = moveHistory[currentMoveIndex + 1];
+      setPosition(nextMove.position);
+      setCurrentTurn(nextMove.turn);
+      setLastMove(nextMove.move);
+      setCurrentMoveIndex(currentMoveIndex + 1);
+    }
+  };
+
+  const saveToHistory = useCallback((newPosition: ChessPiece[], newTurn: 'white' | 'black', move: ChessMove | null) => {
+    // Use functional update to ensure we always have the latest state
+    setMoveHistory(prevHistory => {
+      const newEntry = { position: newPosition, turn: newTurn, move };
+      const newHistory = [...prevHistory, newEntry];
+
+      // Update current move index to the new last position
+      setCurrentMoveIndex(newHistory.length - 1);
+
+      return newHistory;
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
-      {/* Header with Navigation */}
+      {/* Header */}
       <div className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-4">
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Game Arena
-                </h1>
-                <Badge variant="outline" className="text-xs">
-                  Multi-Game Platform
-                </Badge>
-              </div>
-
-              {/* Navigation Tabs */}
-              <nav className="hidden md:flex">
-                <div className="flex gap-1 p-1 bg-muted rounded-lg">
-                  <Button
-                    variant={activeTab === 'tictactoe' ? 'default' : 'ghost'}
-                    onClick={() => setActiveTab('tictactoe')}
-                    className="px-6"
-                  >
-                    Tic Tac Toe
-                  </Button>
-                  <Button
-                    variant={activeTab === 'connect4' ? 'default' : 'ghost'}
-                    onClick={() => setActiveTab('connect4')}
-                    className="px-6"
-                  >
-                    Connect 4
-                  </Button>
-                  <Button
-                    variant={activeTab === 'chess' ? 'default' : 'ghost'}
-                    onClick={() => setActiveTab('chess')}
-                    className="px-6"
-                  >
-                    Chess
-                  </Button>
-                </div>
-              </nav>
+            <div className="flex items-center gap-4">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Chess AI Arena
+              </h1>
+              <Badge variant="outline" className="text-xs">
+                AI vs AI Battles
+              </Badge>
             </div>
 
-            {/* Game Controls - Show only for Chess */}
-            {activeTab === 'chess' && (
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Link to="/stats">
                 <Button
-                  onClick={onStartGame}
-                  disabled={gameInProgress}
-                  className="flex items-center gap-2"
-                >
-                  <Play className="w-4 h-4" />
-                  Start Game
-                </Button>
-
-                <Button
-                  onClick={onResetGame}
                   variant="outline"
                   className="flex items-center gap-2"
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  Reset
+                  <BarChart3 className="w-4 h-4" />
+                  Stats
                 </Button>
-              </div>
-            )}
+              </Link>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-3">
-        {/* Mobile Navigation - Show tabs on mobile only */}
-        <div className="md:hidden mb-6">
-          <div className="grid grid-cols-3 gap-1 p-1 bg-muted rounded-lg">
-            <Button
-              variant={activeTab === 'tictactoe' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('tictactoe')}
-              className="text-xs"
-            >
-              TTT
-            </Button>
-            <Button
-              variant={activeTab === 'connect4' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('connect4')}
-              className="text-xs"
-            >
-              C4
-            </Button>
-            <Button
-              variant={activeTab === 'chess' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('chess')}
-              className="text-xs"
-            >
-              Chess
-            </Button>
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'tictactoe' && (
-          <div className="flex justify-center">
-            <TicTacToe className="max-w-md" />
-          </div>
-        )}
-
-        {activeTab === 'connect4' && (
-          <div className="flex justify-center">
-            <div className="text-center p-8">
-              <h2 className="text-2xl font-bold mb-4">Connect 4</h2>
-              <p className="text-muted-foreground">Coming Soon...</p>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
+          {/* Left Column - Game Board */}
+          <div className="xl:col-span-2 flex items-start justify-center xl:pl-12">
+            {/* Chess Board */}
+            <div className="max-w-3xl w-full">
+              <ChessBoard
+                position={position}
+                onMove={handleMove}
+                validMoves={validMoves}
+                selectedSquare={selectedSquare}
+                onSquareClick={handleSquareClick}
+                isThinking={isAIThinking}
+                lastMove={lastMove}
+                gameInProgress={gameInProgress}
+              />
             </div>
           </div>
-        )}
 
-        {activeTab === 'chess' && (
-          <IndexContent
-            position={position}
-            selectedSquare={selectedSquare}
-            validMoves={validMoves}
-            currentTurn={currentTurn}
-            gameInProgress={gameInProgress}
-            lastMove={lastMove}
-            playerConfig={playerConfig}
-            isAIThinking={isAIThinking}
-            aiResponse={aiResponse}
-            thinkingSteps={thinkingSteps}
-            gameResults={gameResults}
-            modelStats={modelStats}
-            onSquareClick={handleSquareClick}
-            onConfigChange={onConfigChange}
-            onStartGame={onStartGame}
-            onResetGame={onResetGame}
-            getCurrentAIModel={getCurrentAIModel}
-          />
-        )}
+          {/* Right Column - Controls and Analysis */}
+          <div className="space-y-6">
+            <div className="relative overflow-hidden">
+              <div
+                className={`transition-all duration-700 ease-in-out transform ${
+                  showAnalysis
+                    ? '-translate-x-full opacity-0 absolute inset-0'
+                    : 'translate-x-0 opacity-100'
+                }`}
+              >
+                <ModelSelector
+                  playerConfig={playerConfig}
+                  onConfigChange={setPlayerConfig}
+                  gameInProgress={gameInProgress}
+                  onStartGame={startNewGame}
+                />
+              </div>
+
+              <div
+                className={`transition-all duration-700 ease-in-out transform ${
+                  showAnalysis
+                    ? 'translate-x-0 opacity-100'
+                    : 'translate-x-full opacity-0 absolute inset-0'
+                }`}
+              >
+                <ThinkingProcess
+                  key={`thinking-${gameKey}`}
+                  aiResponse={aiResponse}
+                  isThinking={isAIThinking}
+                  currentModel={getCurrentAIModel()}
+                  thinkingSteps={thinkingSteps}
+                  moveHistory={moveHistory}
+                  onResetGame={resetGame}
+                  whitePlayer={playerConfig.white}
+                  blackPlayer={playerConfig.black}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
