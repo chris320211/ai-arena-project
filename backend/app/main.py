@@ -403,10 +403,10 @@ tictactoe_game = TicTacToeGame()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    # await connect_to_mongo()  # Temporarily disabled
+    await connect_to_mongo()
     yield
     # Shutdown
-    # await close_mongo_connection()  # Temporarily disabled
+    await close_mongo_connection()
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
