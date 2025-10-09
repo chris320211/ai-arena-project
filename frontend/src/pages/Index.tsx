@@ -1,16 +1,16 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { Link } from 'react-router-dom';
-import { eloService } from '@/services/eloService';
 
 import ChessBoard, { ChessPiece, ChessMove } from '@/components/ChessBoard';
 import ModelSelector, { AIModel, PlayerConfig, AI_MODELS } from '@/components/ModelSelector';
 import ThinkingProcess, { AIResponse, ThinkingStep } from '@/components/ThinkingProcess';
 import GameStats, { GameResult, ModelStats, EloHistoryEntry } from '@/components/GameStats';
+import TicTacToe from '@/components/TicTacToe';
 
 // Initial chess position
 const INITIAL_POSITION: ChessPiece[] = [
@@ -117,7 +117,6 @@ const Index = () => {
   const [currentTurn, setCurrentTurn] = useState<'white' | 'black'>('white');
   const [gameInProgress, setGameInProgress] = useState(false);
   const [lastMove, setLastMove] = useState<ChessMove | null>(null);
-  const [gameKey, setGameKey] = useState(0); // Force re-init on new game
   const [moveHistory, setMoveHistory] = useState<{position: ChessPiece[], turn: 'white' | 'black', move: ChessMove | null}[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   
@@ -129,13 +128,6 @@ const Index = () => {
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [aiResponse, setAIResponse] = useState<AIResponse | null>(null);
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
-  const [showAnalysis, setShowAnalysis] = useState(false);
-
-  // Reset move history when game key changes
-  useEffect(() => {
-    setMoveHistory([]);
-    setCurrentMoveIndex(-1);
-  }, [gameKey]);
 
   // Game statistics - now loaded from API
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
@@ -152,13 +144,22 @@ const Index = () => {
 
   // Trigger AI move using backend
   const triggerAIMove = useCallback(async () => {
+    console.log('triggerAIMove called with conditions:', { gameInProgress, isAITurn: isAITurn(), isAIThinking });
+    
     if (!gameInProgress || !isAITurn() || isAIThinking) {
+      console.log('triggerAIMove early return due to conditions:', {
+        gameInProgress,
+        isAITurn: isAITurn(),
+        isAIThinking,
+        failing: !gameInProgress ? 'gameInProgress' : !isAITurn() ? 'isAITurn' : 'isAIThinking'
+      });
       return;
     }
 
+    console.log('Setting AI thinking to true');
     setIsAIThinking(true);
     setThinkingSteps([]);
-
+    
     // Add thinking step
     setThinkingSteps([{
       id: '1',
@@ -167,11 +168,12 @@ const Index = () => {
       timestamp: Date.now()
     }]);
 
+    console.log('Making API call to /ai-step');
     try {
       // Add 45 second timeout to prevent hanging (accounting for 10s delay + API time)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 45000);
-
+      
       const response = await fetch('http://localhost:8001/ai-step', {
         method: 'POST',
         headers: {
@@ -179,14 +181,17 @@ const Index = () => {
         },
         signal: controller.signal
       });
-
+      
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        console.log('AI API response not ok:', response.status, response.statusText, response);
         throw new Error('AI move failed');
       }
 
+      console.log('AI API call successful, processing response');
       const data = await response.json();
+      console.log('AI response data:', data);
       
       // Update board state
       const frontendPosition = convertBackendToFrontend(data.board);
@@ -200,8 +205,7 @@ const Index = () => {
       setCurrentTurn(data.turn);
       setLastMove(moveObj);
       
-      // Save to history - data.turn is NEXT player's turn, so previous player made the move
-      const playerWhoMoved = data.turn === 'white' ? 'black' : 'white';
+      // Save to history
       saveToHistory(frontendPosition, data.turn, moveObj);
 
       // Update thinking steps with result
@@ -216,15 +220,12 @@ const Index = () => {
 
       // Check game status
       if (data.status?.checkmate) {
-        const winner = data.turn === 'white' ? 'black' : 'white';
         toast({
           title: "Checkmate!",
-          description: `${winner === 'white' ? 'White' : 'Black'} wins!`,
+          description: `${data.turn === 'white' ? 'Black' : 'White'} wins!`,
           variant: "default"
         });
         setGameInProgress(false);
-        setShowAnalysis(false);
-        recordGameResult(winner);
       } else if (data.status?.check) {
         toast({
           title: "Check!",
@@ -238,20 +239,15 @@ const Index = () => {
           variant: "default"
         });
         setGameInProgress(false);
-        setShowAnalysis(false);
-        recordGameResult('draw');
       }
 
     } catch (error) {
       console.error('Error triggering AI move:', error);
-      // Only show error if it's not an abort error
-      if (error instanceof Error && error.name !== 'AbortError') {
-        toast({
-          title: "AI Error",
-          description: "Failed to get AI move",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "AI Error",
+        description: "Failed to get AI move",
+        variant: "destructive"
+      });
     } finally {
       setIsAIThinking(false);
     }
@@ -260,9 +256,10 @@ const Index = () => {
   // Auto-trigger AI moves
   useEffect(() => {
     if (gameInProgress && isAITurn() && !isAIThinking) {
+      console.log('Triggering AI move for:', currentTurn, 'isAI:', isAITurn(), 'gameInProgress:', gameInProgress, 'isAIThinking:', isAIThinking);
       triggerAIMove();
     }
-  }, [gameInProgress, currentTurn, isAIThinking, triggerAIMove]);
+  }, [gameInProgress, currentTurn, isAIThinking, triggerAIMove]); // Added triggerAIMove back
 
   const getValidMoves = useCallback(async (square: string) => {
     try {
@@ -292,7 +289,7 @@ const Index = () => {
 
   const handleSquareClick = useCallback(async (square: string) => {
     if (isAIThinking || !gameInProgress) return;
-
+    
     if (isAITurn()) {
       toast({
         title: "AI Turn",
@@ -356,17 +353,6 @@ const Index = () => {
 
 
   const startNewGame = async () => {
-    // Force complete reset by changing game key
-    const newGameKey = gameKey + 1;
-    setGameKey(newGameKey);
-
-    // Clear other state
-    setSelectedSquare(null);
-    setValidMoves([]);
-    setLastMove(null);
-    setAIResponse(null);
-    setThinkingSteps([]);
-
     try {
       const response = await fetch('http://localhost:8001/new', { method: 'POST' });
       if (!response.ok) {
@@ -376,7 +362,7 @@ const Index = () => {
       // Configure bots based on player config
       const whiteBot = playerConfig.white === 'human' ? 'human' : playerConfig.white.id;
       const blackBot = playerConfig.black === 'human' ? 'human' : playerConfig.black.id;
-
+      
       const botResponse = await fetch('http://localhost:8001/set-bots', {
         method: 'POST',
         headers: {
@@ -391,19 +377,17 @@ const Index = () => {
       if (!botResponse.ok) {
         throw new Error('Failed to configure bots');
       }
-
+      
       await fetchGameState();
+      setSelectedSquare(null);
+      setValidMoves([]);
+      setLastMove(null);
       setGameInProgress(true);
-      setShowAnalysis(true);
-
-      // Scroll to center the board on the screen
-      setTimeout(() => {
-        const boardElement = document.querySelector('.max-w-3xl');
-        if (boardElement) {
-          boardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-
+      setAIResponse(null);
+      setThinkingSteps([]);
+      setMoveHistory([]);
+      setCurrentMoveIndex(-1);
+      
       toast({
         title: "New Game Started",
         description: "Good luck!",
@@ -454,7 +438,7 @@ const Index = () => {
     } catch (error) {
       console.error('Error resetting game:', error);
       toast({
-        title: "Error",
+        title: "Error", 
         description: "Failed to reset game",
         variant: "destructive"
       });
@@ -551,15 +535,12 @@ const Index = () => {
       saveToHistory(frontendPosition, data.turn, moveObj);
       
       if (data.status?.checkmate) {
-        const winner = data.turn === 'white' ? 'black' : 'white';
         toast({
           title: "Checkmate!",
-          description: `${winner === 'white' ? 'White' : 'Black'} wins!`,
+          description: `${data.turn === 'white' ? 'Black' : 'White'} wins!`,
           variant: "default"
         });
         setGameInProgress(false);
-        setShowAnalysis(false);
-        recordGameResult(winner);
       } else if (data.status?.check) {
         toast({
           title: "Check!",
@@ -573,8 +554,6 @@ const Index = () => {
           variant: "default"
         });
         setGameInProgress(false);
-        setShowAnalysis(false);
-        recordGameResult('draw');
       }
       
       return true;
@@ -639,34 +618,6 @@ const Index = () => {
     return currentPlayer !== 'human' && typeof currentPlayer === 'object' ? currentPlayer : null;
   };
 
-  // Record game result in ELO system
-  const recordGameResult = (winner: 'white' | 'black' | 'draw') => {
-    const whitePlayer = playerConfig.white;
-    const blackPlayer = playerConfig.black;
-
-    // Only record games between AI models (skip human games for now)
-    if (whitePlayer !== 'human' && blackPlayer !== 'human') {
-      try {
-        const result = eloService.recordGameResult(
-          whitePlayer.id,
-          blackPlayer.id,
-          winner
-        );
-
-        const whiteChange = result.whiteRatingAfter - result.whiteRatingBefore;
-        const blackChange = result.blackRatingAfter - result.blackRatingBefore;
-
-        toast({
-          title: "ELO Updated",
-          description: `${whitePlayer.name}: ${whiteChange > 0 ? '+' : ''}${whiteChange}, ${blackPlayer.name}: ${blackChange > 0 ? '+' : ''}${blackChange}`,
-          variant: "default"
-        });
-      } catch (error) {
-        console.error('Error recording ELO result:', error);
-      }
-    }
-  };
-
   // Move navigation functions
   const goBackMove = () => {
     if (currentMoveIndex > 0) {
@@ -694,108 +645,210 @@ const Index = () => {
     }
   };
 
-  const saveToHistory = useCallback((newPosition: ChessPiece[], newTurn: 'white' | 'black', move: ChessMove | null) => {
-    // Use functional update to ensure we always have the latest state
-    setMoveHistory(prevHistory => {
-      const newEntry = { position: newPosition, turn: newTurn, move };
-      const newHistory = [...prevHistory, newEntry];
-
-      // Update current move index to the new last position
-      setCurrentMoveIndex(newHistory.length - 1);
-
-      return newHistory;
-    });
-  }, []);
+  const saveToHistory = (newPosition: ChessPiece[], newTurn: 'white' | 'black', move: ChessMove | null) => {
+    // If we're not at the end of history, remove future moves
+    const newHistory = moveHistory.slice(0, currentMoveIndex + 1);
+    newHistory.push({ position: newPosition, turn: newTurn, move });
+    setMoveHistory(newHistory);
+    setCurrentMoveIndex(newHistory.length - 1);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
-      {/* Header */}
+      {/* Header with Navigation */}
       <div className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Chess AI Arena
-              </h1>
-              <Badge variant="outline" className="text-xs">
-                AI vs AI Battles
-              </Badge>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  Game Arena
+                </h1>
+                <Badge variant="outline" className="text-xs">
+                  Multi-Game Platform
+                </Badge>
+              </div>
+
+              {/* Navigation Tabs */}
+              <nav className="hidden md:flex">
+                <TabsList className="grid grid-cols-3 min-w-fit">
+                  <TabsTrigger value="tictactoe" className="px-6">Tic Tac Toe</TabsTrigger>
+                  <TabsTrigger value="connect4" className="px-6">Connect 4</TabsTrigger>
+                  <TabsTrigger value="chess" className="px-6">Chess</TabsTrigger>
+                </TabsList>
+              </nav>
             </div>
 
+            {/* Game Controls - Show only for Chess */}
             <div className="flex items-center gap-2">
-              <Link to="/stats">
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  Stats
-                </Button>
-              </Link>
+              <Button
+                onClick={startNewGame}
+                disabled={gameInProgress}
+                className="flex items-center gap-2"
+              >
+                <Play className="w-4 h-4" />
+                Start Game
+              </Button>
+
+              <Button
+                onClick={resetGame}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reset
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-3">
+        <Tabs defaultValue="tictactoe" className="w-full">
+          {/* Mobile Navigation - Show tabs on mobile only */}
+          <div className="md:hidden mb-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="tictactoe">TTT</TabsTrigger>
+              <TabsTrigger value="connect4">C4</TabsTrigger>
+              <TabsTrigger value="chess">Chess</TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="tictactoe">
+            <div className="flex justify-center">
+              <TicTacToe className="max-w-md" />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="connect4">
+            <div className="flex justify-center">
+              <div className="text-center p-8">
+                <h2 className="text-2xl font-bold mb-4">Connect 4</h2>
+                <p className="text-muted-foreground">Coming Soon...</p>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="chess">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
           {/* Left Column - Game Board */}
-          <div className="xl:col-span-2 flex items-start justify-center xl:pl-12">
+          <div className="xl:col-span-2 space-y-3">
+            {/* Game Status */}
+            <Card>
+              <CardContent className="p-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50">
+                        <span className="text-xs text-muted-foreground font-medium">Turn:</span>
+                        <div className="flex items-center gap-1.5">
+                          <div className={`w-3 h-3 rounded-full shadow-sm ${
+                            currentTurn === 'white' ? 'bg-white border-2 border-gray-700' : 'bg-gray-800 border border-gray-600'
+                          }`} />
+                          <span className="font-bold text-sm text-foreground">
+                            {currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Badge
+                      variant={gameInProgress ? (isAIThinking ? "default" : "secondary") : "outline"}
+                      className={`text-xs font-medium ${isAIThinking ? 'animate-pulse' : ''}`}
+                    >
+                      {gameInProgress ? (isAIThinking ? "🤔 AI Thinking..." : "⚡ Game Active") : "⏸️ Game Inactive"}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-muted-foreground font-medium px-2 py-1 rounded-md bg-muted/30">
+                      Move {currentMoveIndex + 1} of {moveHistory.length}
+                    </div>
+                    <div className="flex items-center gap-0.5 border rounded-md p-0.5">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-5 w-5 p-0 hover:bg-muted"
+                        onClick={goBackMove}
+                        disabled={currentMoveIndex < 0}
+                        title="Previous move"
+                      >
+                        <ChevronLeft className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-5 w-5 p-0 hover:bg-muted"
+                        onClick={goForwardMove}
+                        disabled={currentMoveIndex >= moveHistory.length - 1}
+                        title="Next move"
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Chess Board */}
-            <div className="max-w-3xl w-full">
-              <ChessBoard
-                position={position}
-                onMove={handleMove}
-                validMoves={validMoves}
-                selectedSquare={selectedSquare}
-                onSquareClick={handleSquareClick}
-                isThinking={isAIThinking}
-                lastMove={lastMove}
-                gameInProgress={gameInProgress}
-              />
+            <div className="flex justify-center">
+              <div className="max-w-2xl w-full">
+                <ChessBoard
+                  position={position}
+                  onMove={handleMove}
+                  validMoves={validMoves}
+                  selectedSquare={selectedSquare}
+                  onSquareClick={handleSquareClick}
+                  isThinking={isAIThinking}
+                  lastMove={lastMove}
+                  gameInProgress={gameInProgress}
+                />
+              </div>
             </div>
           </div>
 
           {/* Right Column - Controls and Analysis */}
           <div className="space-y-6">
-            <div className="relative overflow-hidden">
-              <div
-                className={`transition-all duration-700 ease-in-out transform ${
-                  showAnalysis
-                    ? '-translate-x-full opacity-0 absolute inset-0'
-                    : 'translate-x-0 opacity-100'
-                }`}
-              >
+            <Tabs defaultValue="setup" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="setup">Setup</TabsTrigger>
+                <TabsTrigger value="analysis">Analysis</TabsTrigger>
+                <TabsTrigger value="stats">Stats</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="setup" className="mt-4">
                 <ModelSelector
                   playerConfig={playerConfig}
                   onConfigChange={setPlayerConfig}
                   gameInProgress={gameInProgress}
-                  onStartGame={startNewGame}
                 />
-              </div>
-
-              <div
-                className={`transition-all duration-700 ease-in-out transform ${
-                  showAnalysis
-                    ? 'translate-x-0 opacity-100'
-                    : 'translate-x-full opacity-0 absolute inset-0'
-                }`}
-              >
+              </TabsContent>
+              
+              <TabsContent value="analysis" className="mt-4">
                 <ThinkingProcess
-                  key={`thinking-${gameKey}`}
                   aiResponse={aiResponse}
                   isThinking={isAIThinking}
                   currentModel={getCurrentAIModel()}
                   thinkingSteps={thinkingSteps}
-                  moveHistory={moveHistory}
-                  onResetGame={resetGame}
-                  whitePlayer={playerConfig.white}
-                  blackPlayer={playerConfig.black}
                 />
-              </div>
-            </div>
+              </TabsContent>
+              
+              <TabsContent value="stats" className="mt-4">
+                <div className="max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+                  <GameStats
+                    modelStats={modelStats}
+                    recentGames={gameResults}
+                    aiModels={AI_MODELS}
+                    eloHistory={eloHistory}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

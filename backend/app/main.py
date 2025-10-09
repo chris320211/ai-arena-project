@@ -43,6 +43,8 @@ from .chess_logic import (
     is_in_check, is_checkmate, is_stalemate,
 )
 
+from .tictactoe_logic import TicTacToeGame, TicTacToeMove, TicTacToeState
+
 def _clone_board(board):
     return [row[:] for row in board]
 
@@ -394,14 +396,17 @@ BOTS = {
     "black": None,
 }
 
+# TicTacToe game state
+tictactoe_game = TicTacToeGame()
+
 # Database lifecycle management
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    await connect_to_mongo()
+    # await connect_to_mongo()  # Temporarily disabled
     yield
     # Shutdown
-    await close_mongo_connection()
+    # await close_mongo_connection()  # Temporarily disabled
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
@@ -1024,3 +1029,29 @@ async def get_elo_rating_history(model_id: str = None, limit: int = 50):
     except Exception as e:
         print(f"Error fetching ELO history: {e}")
         return {"elo_history": []}
+
+# TicTacToe API endpoints
+@app.get("/tictactoe/state")
+def get_tictactoe_state():
+    """Get current TicTacToe game state"""
+    return tictactoe_game.get_state()
+
+@app.post("/tictactoe/move")
+def make_tictactoe_move(move: TicTacToeMove):
+    """Make a move in TicTacToe"""
+    success = tictactoe_game.make_move(move.row, move.col)
+    if not success:
+        raise HTTPException(400, "Invalid move")
+    return tictactoe_game.get_state()
+
+@app.post("/tictactoe/reset")
+def reset_tictactoe():
+    """Reset TicTacToe game"""
+    tictactoe_game.reset()
+    return tictactoe_game.get_state()
+
+@app.get("/tictactoe/valid-moves")
+def get_tictactoe_valid_moves():
+    """Get valid moves for current TicTacToe state"""
+    moves = tictactoe_game.get_valid_moves()
+    return {"valid_moves": [{"row": row, "col": col} for row, col in moves]}
