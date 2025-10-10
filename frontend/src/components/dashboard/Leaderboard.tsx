@@ -3,9 +3,12 @@ import { Badge } from "@/components/ui/badge";
 import { Crown, Medal, Award } from "lucide-react";
 import { useEffect, useState } from "react";
 import { API_URL } from "@/config/api";
+import { AI_MODELS } from "@/components/ModelSelector";
+import { cn } from "@/lib/utils";
 
 interface LeaderboardModel {
   rank: number;
+  modelId: string;
   name: string;
   elo: number;
   wins: number;
@@ -38,15 +41,21 @@ const getRankIcon = (rank: number) => {
   }
 };
 
-const getModelDisplayName = (modelId: string): string => {
-  const names: Record<string, string> = {
-    'anthropic_claude_haiku': 'Claude 3 Haiku',
-    'anthropic_claude_sonnet': 'Claude 3.5 Sonnet',
-    'openai_gpt4o_mini': 'GPT-4o Mini',
-    'openai_gpt4o': 'GPT-4o',
-    'gemini_pro': 'Gemini Pro',
+const getModelConfig = (modelId: string) => {
+  const model = AI_MODELS.find(m => m.id === modelId);
+  if (model) {
+    return {
+      name: model.name,
+      icon: model.icon,
+      color: model.color,
+    };
+  }
+  // Fallback for unknown models
+  return {
+    name: modelId,
+    icon: null,
+    color: 'from-gray-500 to-gray-600',
   };
-  return names[modelId] || modelId;
 };
 
 export const Leaderboard = () => {
@@ -60,16 +69,20 @@ export const Leaderboard = () => {
         const data = await response.json();
 
         const leaderboardData: LeaderboardModel[] = data.model_stats
-          .map((stat: ModelStats, index: number) => ({
-            rank: index + 1,
-            name: getModelDisplayName(stat.model_id),
-            elo: stat.rating,
-            wins: stat.wins,
-            losses: stat.losses,
-            draws: stat.draws,
-            winRate: Math.round(stat.win_rate),
-            trend: "stable" as const
-          }));
+          .map((stat: ModelStats, index: number) => {
+            const modelConfig = getModelConfig(stat.model_id);
+            return {
+              rank: index + 1,
+              modelId: stat.model_id,
+              name: modelConfig.name,
+              elo: stat.rating,
+              wins: stat.wins,
+              losses: stat.losses,
+              draws: stat.draws,
+              winRate: Math.round(stat.win_rate),
+              trend: "stable" as const
+            };
+          });
 
         setModels(leaderboardData);
         setLoading(false);
@@ -100,40 +113,47 @@ export const Leaderboard = () => {
             No ratings data available
           </div>
         ) : (
-          models.map((model) => (
-            <div
-              key={model.rank}
-              className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center">
+          models.map((model) => {
+            const modelConfig = getModelConfig(model.modelId);
+            return (
+              <div
+                key={model.rank}
+                className="flex items-center gap-3 rounded-lg border border-border p-4 transition-colors hover:bg-muted/50"
+              >
+                {/* Rank Icon */}
+                <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
                   {getRankIcon(model.rank)}
                 </div>
-                <div>
-                  <p className="font-medium text-foreground">{model.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {model.wins}W • {model.losses}L • {model.draws}D
-                  </p>
+
+                {/* Model Info with Icon */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={cn(
+                    "p-2 rounded-lg bg-gradient-to-r flex-shrink-0",
+                    modelConfig.color
+                  )}>
+                    {modelConfig.icon}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground truncate">{model.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {model.wins}W • {model.losses}L • {model.draws}D
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-foreground">{model.elo}</p>
-                <div className="flex items-center gap-2">
+
+                {/* Stats */}
+                <div className="text-right flex-shrink-0">
+                  <p className="font-bold text-foreground">{model.elo}</p>
                   <Badge
-                    variant={model.winRate >= 70 ? "default" : "secondary"}
+                    variant={model.winRate >= 70 ? "default" : model.winRate >= 50 ? "secondary" : "outline"}
                     className="text-xs"
                   >
                     {model.winRate}%
                   </Badge>
-                  <div className={`h-2 w-2 rounded-full ${
-                    model.trend === 'up' ? 'bg-accent' :
-                    model.trend === 'down' ? 'bg-destructive' :
-                    'bg-muted-foreground'
-                  }`} />
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </CardContent>
     </Card>

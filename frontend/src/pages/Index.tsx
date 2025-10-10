@@ -137,6 +137,17 @@ const Index = () => {
     setCurrentMoveIndex(-1);
   }, [gameKey]);
 
+  // Reset board to initial position when game is not in progress
+  useEffect(() => {
+    if (!gameInProgress) {
+      setPosition(INITIAL_POSITION);
+      setCurrentTurn('white');
+      setLastMove(null);
+      setSelectedSquare(null);
+      setValidMoves([]);
+    }
+  }, [gameInProgress]);
+
   // Game statistics - now loaded from API
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [modelStats, setModelStats] = useState<ModelStats[]>([]);
@@ -219,7 +230,7 @@ const Index = () => {
         const winner = data.turn === 'white' ? 'black' : 'white';
         toast({
           title: "Checkmate!",
-          description: `${winner === 'white' ? 'White' : 'Black'} wins!`,
+          description: `${winner === 'white' ? 'White Wins' : 'Black Wins'}!`,
           variant: "default"
         });
         setGameInProgress(false);
@@ -552,7 +563,7 @@ const Index = () => {
         const winner = data.turn === 'white' ? 'black' : 'white';
         toast({
           title: "Checkmate!",
-          description: `${winner === 'white' ? 'White' : 'Black'} wins!`,
+          description: `${winner === 'white' ? 'White Wins' : 'Black Wins'}!`,
           variant: "default"
         });
         setGameInProgress(false);

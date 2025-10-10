@@ -272,7 +272,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                     >
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded bg-gradient-to-r from-green-500 to-blue-500"></div>
-                        Human Player
+                        You
                       </div>
                     </SelectItem>
                     {aiModels.map(model => (
@@ -307,7 +307,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                     >
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded bg-gradient-to-r from-green-500 to-blue-500"></div>
-                        Human Player
+                        You
                       </div>
                     </SelectItem>
                     {aiModels.map(model => (
@@ -394,7 +394,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                 </div>
                 {(() => {
                   const model = getModelById(selectedModel1);
-                  const modelName = selectedModel1 === 'human' ? 'Human' : model?.name?.split(' ')[0] || selectedModel1;
+                  const modelName = selectedModel1 === 'human' ? 'You' : model?.name?.split(' ')[0] || selectedModel1;
                   const asWhiteGames = filteredGames.filter(g => g.white_model === selectedModel1);
                   const whiteWins = asWhiteGames.filter(g => g.winner === 'white').length;
                   const whiteTotal = asWhiteGames.length;
@@ -453,7 +453,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                 </div>
                 {(() => {
                   const model = getModelById(selectedModel2);
-                  const modelName = selectedModel2 === 'human' ? 'Human' : model?.name?.split(' ')[0] || selectedModel2;
+                  const modelName = selectedModel2 === 'human' ? 'You' : model?.name?.split(' ')[0] || selectedModel2;
                   const asBlackGames = filteredGames.filter(g => g.black_model === selectedModel2);
                   const blackWins = asBlackGames.filter(g => g.winner === 'black').length;
                   const blackTotal = asBlackGames.length;
@@ -538,7 +538,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <div className="w-3 h-3 bg-white border-2 border-gray-700 rounded-full flex-shrink-0" />
                           <span className="text-sm font-semibold truncate max-w-[80px] md:max-w-none">
-                            {whiteModel?.name || (game.white_model === 'human' ? 'Human' : game.white_model)}
+                            {whiteModel?.name || (game.white_model === 'human' ? 'You' : game.white_model)}
                           </span>
                         </div>
 
@@ -556,7 +556,7 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                         {/* Black player */}
                         <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
                           <span className="text-sm font-semibold truncate max-w-[80px] md:max-w-none text-right">
-                            {blackModel?.name || (game.black_model === 'human' ? 'Human' : game.black_model)}
+                            {blackModel?.name || (game.black_model === 'human' ? 'You' : game.black_model)}
                           </span>
                           <div className="w-3 h-3 bg-gray-800 rounded-full flex-shrink-0" />
                         </div>
@@ -955,10 +955,10 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <div className="w-4 h-4 bg-white border-2 border-gray-700 rounded-full flex-shrink-0" />
                           <span className="text-sm font-semibold truncate max-w-[100px] md:max-w-none">
-                            {whiteModel?.name || (game.white_model === 'human' ? 'Human' : game.white_model)}
+                            {whiteModel?.name || (game.white_model === 'human' ? 'You' : game.white_model)}
                           </span>
                         </div>
-                        
+
                         {/* VS divider with result */}
                         <div className="flex flex-col items-center gap-1 px-2">
                           <div className="text-xs text-muted-foreground font-medium">VS</div>
@@ -969,11 +969,11 @@ const GameStats = ({ modelStats, recentGames, aiModels, eloHistory = [] }: GameS
                             "bg-yellow-500"
                           )} />
                         </div>
-                        
+
                         {/* Black player */}
                         <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
                           <span className="text-sm font-semibold truncate max-w-[100px] md:max-w-none text-right">
-                            {blackModel?.name || (game.black_model === 'human' ? 'Human' : game.black_model)}
+                            {blackModel?.name || (game.black_model === 'human' ? 'You' : game.black_model)}
                           </span>
                           <div className="w-4 h-4 bg-gray-800 rounded-full flex-shrink-0" />
                         </div>
