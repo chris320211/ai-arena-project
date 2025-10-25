@@ -8,47 +8,59 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 26% 14%;
-    --foreground: 210 40% 98%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 220 30% 18%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 10% 7%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 220 30% 18%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 10% 7%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 210 100% 56%;
-    --primary-foreground: 220 26% 14%;
+    --primary: 263 70% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 25%;
-    --secondary-foreground: 210 40% 98%;
+    --primary-glow: 263 80% 65%;
+    --accent-cyan: 180 100% 50%;
+    --accent-purple: 270 100% 70%;
 
-    --muted: 220 15% 22%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --secondary: 240 10% 15%;
+    --secondary-foreground: 0 0% 98%;
 
-    --accent: 45 93% 58%;
-    --accent-foreground: 220 26% 14%;
+    --muted: 240 5% 20%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 180 100% 50%;
+    --accent-foreground: 240 10% 3.9%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 220 20% 25%;
-    --input: 220 20% 25%;
-    --ring: 210 100% 56%;
+    --border: 240 10% 15%;
+    --input: 240 10% 15%;
+    --ring: 263 70% 50%;
 
     --radius: 0.75rem;
-    
+
     /* Chess-specific colors */
     --chess-light: 48 76% 88%;
     --chess-dark: 34 53% 32%;
-    --chess-highlight: 210 100% 56%;
+    --chess-highlight: 263 70% 50%;
     --chess-valid-move: 120 100% 40%;
     --chess-capture: 0 100% 50%;
-    
+
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(220 30% 18%), hsl(220 20% 25%));
-    --gradient-board: linear-gradient(145deg, hsl(220 26% 14%), hsl(220 30% 18%));
-    --gradient-accent: linear-gradient(135deg, hsl(210 100% 56%), hsl(45 93% 58%));
+    --gradient-primary: linear-gradient(135deg, hsl(263 70% 50%), hsl(180 100% 50%));
+    --gradient-board: linear-gradient(145deg, hsl(240 10% 3.9%), hsl(240 10% 7%));
+    --gradient-accent: linear-gradient(135deg, hsl(263 70% 50%), hsl(270 100% 70%));
+    --gradient-glow: linear-gradient(135deg, hsl(263 80% 65% / 0.2), hsl(180 100% 50% / 0.2));
+
+    /* Shadows */
+    --shadow-neon: 0 0 30px hsl(263 70% 50% / 0.3);
+    --shadow-cyan: 0 0 30px hsl(180 100% 50% / 0.3);
+
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     --sidebar-background: 0 0% 98%;
 
