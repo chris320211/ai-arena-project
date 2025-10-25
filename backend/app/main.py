@@ -71,13 +71,6 @@ def _collect_legal_moves_for_side(board, side):
                     moves.append((x, y, tx, ty))
     return moves
 
-class RandomAI:
-    def choose(self, board, side):
-        pool = _collect_legal_moves_for_side(board, side)
-        if not pool:
-            return None
-        import random
-        return random.choice(pool)
 
 class OllamaAI:
     def __init__(self, model: str, base: str | None = None):
@@ -145,7 +138,7 @@ class OpenAIAI:
                 {"role": "system", "content": system_text},
                 {"role": "user", "content": user_text},
             ],
-            temperature=0,
+            temperature=0.5,
         )
         txt = resp.choices[0].message.content
         import json, re
@@ -188,7 +181,7 @@ class AnthropicAI:
         message = self.client.messages.create(
             model=self.model,
             max_tokens=150,
-            temperature=0,
+            temperature=0.5,
             system=system_text,
             messages=[{"role": "user", "content": user_text}]
         )
@@ -551,15 +544,15 @@ def _get_ai_user_prompt(board, side, legal_moves) -> str:
         f"opponent_in_check: {is_in_check_now}\n"
         f"legal_moves: {legal_moves}\n"
         f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n\n"
-        "PRIORITY ORDER (choose the highest priority available):\n"
-        "1. CHECKMATE - If you can checkmate, do it immediately!\n"
-        "2. CAPTURE QUEEN - If you can capture opponent's Queen (Q/q), take it!\n"
-        "3. CAPTURE ROOK - If you can capture opponent's Rook (R/r), take it!\n"
-        "4. CHECK - If you can put opponent's King in check, consider it!\n"
-        "5. CAPTURE OTHER PIECES - Take opponent's pieces (Bishop/Knight/Pawn) when advantageous\n"
-        "6. PROTECT YOUR PIECES - Move pieces that are under attack to safety\n"
-        "7. DEVELOP & CONTROL CENTER - Control center squares (e4, d4, e5, d5)\n\n"
-        "Pick the BEST move based on these priorities."
+        "STRATEGIC PRIORITIES (evaluate from top to bottom):\n"
+        "1. CHECKMATE — Deliver checkmate immediately if available.\n"
+        "2. WIN MATERIAL — Capture the opponent’s Queen first, then Rook, Bishop, Knight, or Pawn when it improves your position.\n"
+        "3. CHECK — Place the opponent’s King in check to gain tempo or force a defensive response.\n"
+        "4. DEFEND — Move threatened pieces to safety or counterattack to neutralize threats.\n"
+        "5. POSITIONAL PLAY — Develop minor pieces early and improve control over central squares (d4, e4, d5, e5).\n"
+        "6. KING SAFETY — Prioritize castling and minimizing exposure of your King.\n"
+        "7. ENDGAME PREPARATION — In simplified positions, advance pawns strategically and activate your King.\n\n"
+        "Select the move that yields the highest strategic advantage according to these principles."
     )
 
     return prompt
