@@ -18,7 +18,7 @@ const StatsDashboard = () => {
                 <Trophy className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Chess AI Analytics</h1>
+                <h1 className="text-2xl font-bold text-foreground">AI Arena Analytics</h1>
                 <p className="text-sm text-muted-foreground">AI Model Performance Dashboard</p>
               </div>
             </div>

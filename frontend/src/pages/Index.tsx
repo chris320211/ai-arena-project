@@ -2,10 +2,16 @@ import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, ChevronLeft, ChevronRight, BarChart3, Gamepad2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import { API_URL } from '@/config/api';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 
 import ChessBoard, { ChessPiece, ChessMove } from '@/components/ChessBoard';
 import ModelSelector, { AIModel, PlayerConfig, AI_MODELS } from '@/components/ModelSelector';
@@ -110,6 +116,13 @@ const MOCK_MODEL_STATS: ModelStats[] = [
   }
 ];
 
+// Games configuration
+const GAMES = [
+  { id: "chess", name: "Chess" },
+  { id: "go", name: "Go" },
+  { id: "stocks", name: "Stocks" },
+];
+
 const Index = () => {
   const [position, setPosition] = useState<ChessPiece[]>(INITIAL_POSITION);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
@@ -120,6 +133,8 @@ const Index = () => {
   const [gameKey, setGameKey] = useState(0); // Force re-init on new game
   const [moveHistory, setMoveHistory] = useState<{position: ChessPiece[], turn: 'white' | 'black', move: ChessMove | null}[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
+  const [selectedGame, setSelectedGame] = useState<string>('chess');
+  const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
   
   // AI-related state
   const [playerConfig, setPlayerConfig] = useState<PlayerConfig>({
@@ -687,16 +702,98 @@ const Index = () => {
     });
   }, []);
 
+  const currentGame = GAMES.find(g => g.id === selectedGame);
+  const handleGameChange = (gameId: string) => {
+    setSelectedGame(gameId);
+    setIsGameMenuOpen(false);
+    if (gameId !== 'chess') {
+      const upcomingGame = GAMES.find(game => game.id === gameId);
+      toast({
+        title: "Coming Soon",
+        description: `${upcomingGame?.name ?? "This game"} is not yet available`,
+        variant: "default"
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
       {/* Header */}
       <div className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Chess AI Arena
+                AI Arena
               </h1>
+
+              {/* Games Dropdown */}
+              <DropdownMenu open={isGameMenuOpen} onOpenChange={setIsGameMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-haspopup="menu"
+                    aria-expanded={isGameMenuOpen}
+                    className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 text-foreground hover:border-primary/40 hover:from-primary/15 hover:to-primary/10 transition-all duration-300 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  >
+                    <Gamepad2 className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm">{currentGame?.name}</span>
+                    <svg
+                      className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-300 ${isGameMenuOpen ? "text-foreground translate-y-0.5" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent
+                  align="start"
+                  sideOffset={12}
+                  className="z-[200] w-48 rounded-xl border border-border/60 bg-background/95 text-foreground shadow-xl backdrop-blur supports-[backdrop-filter]:bg-background/80 p-0"
+                >
+                  <div className="p-1.5">
+                    {GAMES.map((game, index) => (
+                      <DropdownMenuItem
+                        key={game.id}
+                        onSelect={(event) => {
+                          event.preventDefault();
+                          handleGameChange(game.id);
+                        }}
+                        style={{
+                          animationDelay: `${index * 50}ms`,
+                        }}
+                        className={`flex cursor-pointer items-center justify-between rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 focus:bg-accent/60 focus:text-foreground ${
+                          selectedGame === game.id
+                            ? "bg-gradient-to-r from-primary/20 to-primary/10 text-primary shadow-sm focus:text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                        }`}
+                      >
+                        <span>{game.name}</span>
+                        {selectedGame === game.id && (
+                          <svg
+                            className="w-4 h-4 text-primary animate-in zoom-in duration-200"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                  <div className="border-t border-border/50 px-3 py-2 bg-muted/30">
+                    <p className="text-xs text-muted-foreground">More games coming soon</p>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Badge variant="outline" className="text-xs">
                 AI vs AI Battles
               </Badge>

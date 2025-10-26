@@ -1,6 +1,13 @@
+import { useState, useCallback } from "react";
 import { Gamepad2, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 interface HeaderProps {
   selectedGame: string;
@@ -8,15 +15,23 @@ interface HeaderProps {
 }
 
 const games = [
-  { id: "chess", name: "Chess", icon: "♟" },
-  { id: "go", name: "Go", icon: "⚫" },
-  { id: "tictactoe", name: "Tic-Tac-Toe", icon: "⨯" },
-  { id: "stocks", name: "Stock Trading", icon: "📈" },
+  { id: "chess", name: "Chess" },
+  { id: "go", name: "Go" },
+  { id: "stocks", name: "Stocks" },
 ];
 
 export const Header = ({ selectedGame, onGameChange }: HeaderProps) => {
   const currentGame = games.find(g => g.id === selectedGame);
-  
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleGameChange = useCallback(
+    (gameId: string) => {
+      onGameChange(gameId);
+      setIsMenuOpen(false);
+    },
+    [onGameChange]
+  );
+
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-6 py-4">
@@ -27,34 +42,71 @@ export const Header = ({ selectedGame, onGameChange }: HeaderProps) => {
             </h1>
             
             <nav className="hidden md:flex items-center gap-6">
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-4 py-2 rounded-md border border-primary/50 bg-background/50 backdrop-blur-sm text-foreground hover:border-primary hover:bg-primary/10 transition-smooth">
-                  <Gamepad2 className="h-4 w-4" />
-                  <span className="font-medium">Game</span>
-                  <span className="text-xs text-muted-foreground ml-1">({currentGame?.name})</span>
-                </button>
-                
-                <div className="absolute top-full left-0 mt-2 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-out">
-                  <div className="bg-popover border border-border rounded-lg shadow-neon overflow-hidden backdrop-blur-sm">
-                    <div className="p-2 space-y-1">
-                      {games.map((game) => (
-                        <button
-                          key={game.id}
-                          onClick={() => onGameChange(game.id)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-md text-left transition-smooth ${
-                            selectedGame === game.id
-                              ? "bg-primary/20 text-primary border border-primary/30"
-                              : "text-foreground hover:bg-primary/10 hover:text-primary border border-transparent"
-                          }`}
-                        >
-                          <span className="text-2xl">{game.icon}</span>
-                          <span className="font-medium">{game.name}</span>
-                        </button>
-                      ))}
-                    </div>
+              <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-haspopup="menu"
+                    aria-expanded={isMenuOpen}
+                    className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 text-foreground hover:border-primary/40 hover:from-primary/15 hover:to-primary/10 transition-all duration-300 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  >
+                    <Gamepad2 className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm">{currentGame?.name}</span>
+                    <svg
+                      className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-300 ${isMenuOpen ? "text-foreground translate-y-0.5" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent
+                  align="start"
+                  sideOffset={12}
+                  className="z-[200] w-48 rounded-xl border border-border/60 bg-background/95 text-foreground shadow-xl backdrop-blur supports-[backdrop-filter]:bg-background/80 p-0"
+                >
+                  <div className="p-1.5">
+                    {games.map((game, index) => (
+                      <DropdownMenuItem
+                        key={game.id}
+                        onSelect={(event) => {
+                          event.preventDefault();
+                          handleGameChange(game.id);
+                        }}
+                        style={{
+                          animationDelay: `${index * 50}ms`,
+                        }}
+                        className={`flex cursor-pointer items-center justify-between rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 focus:bg-accent/60 focus:text-foreground ${
+                          selectedGame === game.id
+                            ? "bg-gradient-to-r from-primary/20 to-primary/10 text-primary shadow-sm focus:text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                        }`}
+                      >
+                        <span>{game.name}</span>
+                        {selectedGame === game.id && (
+                          <svg
+                            className="w-4 h-4 text-primary animate-in zoom-in duration-200"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
                   </div>
-                </div>
-              </div>
+                  <div className="border-t border-border/50 px-3 py-2 bg-muted/30">
+                    <p className="text-xs text-muted-foreground">More games coming soon</p>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </nav>
           </div>
           
