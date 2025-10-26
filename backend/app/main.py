@@ -95,7 +95,7 @@ class OllamaAI:
             "model": self.model,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": 0}
+            "options": {"temperature": 0.7}
         })
         txt = data.get("response", "")
         import json, re
@@ -138,7 +138,7 @@ class OpenAIAI:
                 {"role": "system", "content": system_text},
                 {"role": "user", "content": user_text},
             ],
-            temperature=0.5,
+            temperature=0.7,
         )
         txt = resp.choices[0].message.content
         import json, re
@@ -181,7 +181,7 @@ class AnthropicAI:
         message = self.client.messages.create(
             model=self.model,
             max_tokens=150,
-            temperature=0.5,
+            temperature=0.7,
             system=system_text,
             messages=[{"role": "user", "content": user_text}]
         )
@@ -269,7 +269,7 @@ class HttpAI:
                 {"role": "system", "content": system_text},
                 {"role": "user", "content": user_text}
             ],
-            "temperature": 0,
+            "temperature": 0.7,
             "max_tokens": 150
         }
         
@@ -516,7 +516,9 @@ def _legal_moves_alg(board, side) -> List[dict]:
 def _get_ai_system_prompt() -> str:
     """Get improved system prompt for AI chess engines"""
     return (
-        "You are an expert chess engine. Your goal is to WIN the game. "
+        "You are a HIGHLY COMPETITIVE chess grandmaster. Your ONLY objective is to DEFEAT your opponent and WIN this game. "
+        "Every move must be calculated to maximize your winning chances. Play aggressively and strategically. "
+        "DO NOT play passively or make random moves. ACTIVELY seek to capture opponent pieces, control the board, and deliver checkmate. "
         "Respond ONLY with JSON matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
         "Choose strictly from the provided legal_moves list."
     )
@@ -539,20 +541,24 @@ def _get_ai_user_prompt(board, side, legal_moves) -> str:
     is_in_check_now = is_in_check(board, opp_side)
 
     prompt = (
-        f"turn: {side}\n"
-        f"opponent_king_position: {king_pos}\n"
-        f"opponent_in_check: {is_in_check_now}\n"
-        f"legal_moves: {legal_moves}\n"
-        f"board_array (8x8 of pieces or '.'): {_board_array(board)}\n\n"
-        "STRATEGIC PRIORITIES (evaluate from top to bottom):\n"
-        "1. CHECKMATE — Deliver checkmate immediately if available.\n"
-        "2. WIN MATERIAL — Capture the opponent’s Queen first, then Rook, Bishop, Knight, or Pawn when it improves your position.\n"
-        "3. CHECK — Place the opponent’s King in check to gain tempo or force a defensive response.\n"
-        "4. DEFEND — Move threatened pieces to safety or counterattack to neutralize threats.\n"
-        "5. POSITIONAL PLAY — Develop minor pieces early and improve control over central squares (d4, e4, d5, e5).\n"
-        "6. KING SAFETY — Prioritize castling and minimizing exposure of your King.\n"
-        "7. ENDGAME PREPARATION — In simplified positions, advance pawns strategically and activate your King.\n\n"
-        "Select the move that yields the highest strategic advantage according to these principles."
+        f"YOU ARE PLAYING AS: {side.upper()}\n"
+        f"OPPONENT KING LOCATION: {king_pos}\n"
+        f"OPPONENT IN CHECK: {is_in_check_now}\n"
+        f"YOUR LEGAL MOVES: {legal_moves}\n"
+        f"CURRENT BOARD STATE (8x8 grid): {_board_array(board)}\n\n"
+        "⚔️ WINNING STRATEGY - FOLLOW THIS ORDER:\n"
+        "1. ✓ CHECKMATE NOW — If you can deliver checkmate this move, DO IT IMMEDIATELY. This wins the game!\n"
+        "2. ✓ CAPTURE HIGH-VALUE PIECES — Take opponent's Queen (9 pts), Rook (5 pts), Bishop/Knight (3 pts), Pawn (1 pt). Always capture when advantageous!\n"
+        "3. ✓ PUT OPPONENT IN CHECK — Attack their King to force defensive moves and gain tempo. This weakens their position!\n"
+        "4. ✓ THREATEN VALUABLE PIECES — Attack their Queen, Rooks, and other pieces to force them into bad positions!\n"
+        "5. ✓ DEFEND YOUR PIECES — Protect your own valuable pieces from capture, but only if they're actually threatened!\n"
+        "6. ✓ CONTROL THE CENTER — Develop pieces to control central squares (e4, d4, e5, d5) for better mobility!\n"
+        "7. ✓ CASTLE FOR KING SAFETY — Protect your King early by castling, but don't delay attacks!\n"
+        "8. ✓ PROMOTE PAWNS IN ENDGAME — Push pawns to the 8th rank to get a new Queen!\n\n"
+        "🎯 CRITICAL: You are in a COMPETITIVE MATCH. Your opponent is trying to BEAT YOU. \n"
+        "Fight back! Look for aggressive moves that capture pieces, threaten checkmate, or put pressure on your opponent.\n"
+        "DO NOT make passive developing moves if there are tactical opportunities available!\n\n"
+        "NOW: Analyze the board and select the STRONGEST, most AGGRESSIVE move from your legal_moves list that gives you the best winning advantage!"
     )
 
     return prompt
