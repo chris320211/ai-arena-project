@@ -72,6 +72,34 @@ def _collect_legal_moves_for_side(board, side):
     return moves
 
 
+class RandomAI:
+    """Random move selector for baseline comparison"""
+    def choose(self, board, side):
+        import random
+        # Inline legal move collection to avoid circular dependency
+        moves = []
+        for x in range(8):
+            for y in range(8):
+                piece = board[x][y]
+                if piece == '.':
+                    continue
+                if side == 'white' and not piece.isupper():
+                    continue
+                if side == 'black' and not piece.islower():
+                    continue
+                from .chess_logic import get_piece_moves
+                for tx, ty in get_piece_moves(board, x, y):
+                    # Check if move is legal (doesn't leave king in check)
+                    temp = [row[:] for row in board]
+                    from .chess_logic import move_piece, is_in_check
+                    move_piece(temp, x, y, tx, ty)
+                    if not is_in_check(temp, side):
+                        moves.append((x, y, tx, ty))
+        if not moves:
+            raise HTTPException(400, "No legal moves available")
+        return random.choice(moves)
+
+
 class OllamaAI:
     def __init__(self, model: str, base: str | None = None):
         self.model = model
@@ -879,28 +907,9 @@ async def ai_step():
     if not pool:
         raise HTTPException(400, "Bot cannot make a move (no legal moves)")
 
-    # Filter out moves that would cause repetition or immediate reversal
-    fx, fy, tx, ty = mv if mv in pool else pool[0]
-
-    # Check if the AI's chosen move would repeat or reverse
-    if mv in pool and (_is_immediate_reversal(fx, fy, tx, ty) or _would_repeat_position(board, fx, fy, tx, ty)):
-        print(f"Warning: {bot_name} tried to repeat/reverse move, finding alternative")
-        # Find a non-repeating move
-        alternative_found = False
-        for candidate in pool:
-            cfx, cfy, ctx, cty = candidate
-            if not _is_immediate_reversal(cfx, cfy, ctx, cty) and not _would_repeat_position(board, cfx, cfy, ctx, cty):
-                mv = candidate
-                alternative_found = True
-                print(f"Found non-repeating alternative: {_xy_to_alg(cfx, cfy)} -> {_xy_to_alg(ctx, cty)}")
-                break
-
-        # If all moves would repeat (very rare), allow it to prevent getting stuck
-        if not alternative_found:
-            print(f"Warning: All moves would repeat, allowing repetition")
-            mv = pool[0]
-    elif mv not in pool:
-        print(f"Warning: {bot_name} returned invalid move, using fallback")
+    # Validate and potentially fix the AI's chosen move
+    if mv not in pool:
+        print(f"Warning: {bot_name} returned invalid move {mv}, using fallback")
         # Find a non-repeating fallback
         mv = pool[0]
         for candidate in pool:
@@ -908,6 +917,25 @@ async def ai_step():
             if not _is_immediate_reversal(cfx, cfy, ctx, cty) and not _would_repeat_position(board, cfx, cfy, ctx, cty):
                 mv = candidate
                 break
+    else:
+        # AI returned a valid move, but check if it would repeat or reverse
+        fx, fy, tx, ty = mv
+        if _is_immediate_reversal(fx, fy, tx, ty) or _would_repeat_position(board, fx, fy, tx, ty):
+            print(f"Warning: {bot_name} tried to repeat/reverse move, finding alternative")
+            # Find a non-repeating move
+            alternative_found = False
+            for candidate in pool:
+                cfx, cfy, ctx, cty = candidate
+                if not _is_immediate_reversal(cfx, cfy, ctx, cty) and not _would_repeat_position(board, cfx, cfy, ctx, cty):
+                    mv = candidate
+                    alternative_found = True
+                    print(f"Found non-repeating alternative: {_xy_to_alg(cfx, cfy)} -> {_xy_to_alg(ctx, cty)}")
+                    break
+
+            # If all moves would repeat (very rare), allow it to prevent getting stuck
+            if not alternative_found:
+                print(f"Warning: All moves would repeat, allowing repetition")
+                mv = pool[0]
 
     _apply_move_tuple(board, mv)
     STATE["move_count"] += 1
