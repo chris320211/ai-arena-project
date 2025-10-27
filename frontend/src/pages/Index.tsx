@@ -706,7 +706,9 @@ const Index = () => {
   const handleGameChange = (gameId: string) => {
     setSelectedGame(gameId);
     setIsGameMenuOpen(false);
-    if (gameId !== 'chess') {
+    if (gameId === 'go') {
+      window.location.href = '/go';
+    } else if (gameId !== 'chess') {
       const upcomingGame = GAMES.find(game => game.id === gameId);
       toast({
         title: "Coming Soon",
