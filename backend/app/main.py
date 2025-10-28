@@ -45,6 +45,15 @@ from .chess_logic import (
 
 from .tictactoe_logic import TicTacToeGame, TicTacToeMove, TicTacToeState
 
+from .go_logic import (
+    create_board as create_go_board,
+    make_move as make_go_move,
+    get_all_valid_moves as get_go_valid_moves,
+    position_to_string as go_pos_to_string,
+    string_to_position as go_string_to_pos,
+    score_board as score_go_board,
+)
+
 def _clone_board(board):
     return [row[:] for row in board]
 
@@ -419,6 +428,19 @@ BOTS = {
 
 # TicTacToe game state
 tictactoe_game = TicTacToeGame()
+
+# Go game state
+GO_STATE = {
+    "board": create_go_board(19),
+    "turn": "black",  # Black goes first in Go
+    "last_move": None,
+    "game_start_time": None,
+    "move_count": 0,
+    "game_active": False,
+    "last_board_state": None,  # For Ko rule
+    "captured": {"black": 0, "white": 0},  # Stones captured by each player
+    "board_size": 19,
+}
 
 # Database lifecycle management
 @asynccontextmanager
@@ -1091,3 +1113,205 @@ def get_tictactoe_valid_moves():
     """Get valid moves for current TicTacToe state"""
     moves = tictactoe_game.get_valid_moves()
     return {"valid_moves": [{"row": row, "col": col} for row, col in moves]}
+
+# Go API endpoints
+@app.get("/go/state")
+def get_go_state():
+    """Get current Go game state"""
+    return {
+        "board": GO_STATE["board"],
+        "turn": GO_STATE["turn"],
+        "last_move": GO_STATE["last_move"],
+        "captured": GO_STATE["captured"],
+        "board_size": GO_STATE["board_size"],
+    }
+
+@app.post("/go/new")
+def new_go_game():
+    """Start a new Go game"""
+    GO_STATE["board"] = create_go_board(GO_STATE["board_size"])
+    GO_STATE["turn"] = "black"
+    GO_STATE["last_move"] = None
+    GO_STATE["game_start_time"] = datetime.utcnow()
+    GO_STATE["move_count"] = 0
+    GO_STATE["game_active"] = True
+    GO_STATE["last_board_state"] = None
+    GO_STATE["captured"] = {"black": 0, "white": 0}
+    return get_go_state()
+
+@app.post("/go/reset")
+def reset_go_game():
+    """Reset Go game"""
+    GO_STATE["board"] = create_go_board(GO_STATE["board_size"])
+    GO_STATE["turn"] = "black"
+    GO_STATE["last_move"] = None
+    GO_STATE["game_start_time"] = None
+    GO_STATE["move_count"] = 0
+    GO_STATE["game_active"] = False
+    GO_STATE["last_board_state"] = None
+    GO_STATE["captured"] = {"black": 0, "white": 0}
+    return get_go_state()
+
+class GoMovePayload(BaseModel):
+    x: int
+    y: int
+
+@app.post("/go/move")
+async def make_go_move_endpoint(payload: GoMovePayload):
+    """Make a move in Go game"""
+    board = GO_STATE["board"]
+    turn = GO_STATE["turn"]
+
+    x, y = payload.x, payload.y
+
+    # Check if it's a valid position
+    if not (0 <= x < GO_STATE["board_size"] and 0 <= y < GO_STATE["board_size"]):
+        raise HTTPException(400, "Position out of bounds")
+
+    # Determine stone color
+    color = 'B' if turn == "black" else 'W'
+
+    # Save current board for Ko rule
+    prev_board = [row[:] for row in board]
+
+    # Try to make the move
+    success, error, captured = make_go_move(board, x, y, color, GO_STATE["last_board_state"])
+
+    if not success:
+        raise HTTPException(400, error)
+
+    # Update captured count
+    if turn == "black":
+        GO_STATE["captured"]["black"] += captured
+    else:
+        GO_STATE["captured"]["white"] += captured
+
+    # Update game state
+    GO_STATE["last_move"] = {"x": x, "y": y, "color": turn}
+    GO_STATE["move_count"] += 1
+    GO_STATE["last_board_state"] = prev_board
+
+    # Switch turns
+    GO_STATE["turn"] = "white" if turn == "black" else "black"
+
+    return {
+        "board": board,
+        "turn": GO_STATE["turn"],
+        "last_move": GO_STATE["last_move"],
+        "captured": GO_STATE["captured"],
+    }
+
+@app.post("/go/pass")
+async def pass_go_move():
+    """Pass turn in Go game"""
+    GO_STATE["turn"] = "white" if GO_STATE["turn"] == "black" else "black"
+    GO_STATE["last_move"] = {"pass": True, "color": "black" if GO_STATE["turn"] == "white" else "white"}
+    return get_go_state()
+
+@app.get("/go/score")
+def get_go_score():
+    """Get current score of the Go game"""
+    black_score, white_score = score_go_board(GO_STATE["board"])
+    return {
+        "black": black_score,
+        "white": white_score,
+        "captured_by_black": GO_STATE["captured"]["black"],
+        "captured_by_white": GO_STATE["captured"]["white"],
+    }
+
+@app.get("/go/valid-moves")
+def get_go_valid_moves_endpoint():
+    """Get all valid moves for current player"""
+    board = GO_STATE["board"]
+    turn = GO_STATE["turn"]
+    color = 'B' if turn == "black" else 'W'
+
+    valid_moves = get_go_valid_moves(board, color, GO_STATE["last_board_state"])
+
+    return {
+        "valid_moves": [{"x": x, "y": y} for x, y in valid_moves],
+        "count": len(valid_moves)
+    }
+
+@app.post("/go/ai-step")
+async def go_ai_step():
+    """Let AI make a move in Go game"""
+    board = GO_STATE["board"]
+    turn = GO_STATE["turn"]
+    bot_name = BOTS[turn]
+
+    if not bot_name:
+        raise HTTPException(400, f"No bot assigned for {turn}")
+
+    engine = ENGINES.get(bot_name)
+    if not engine:
+        raise HTTPException(500, f"Bot engine not found: {bot_name}")
+
+    # Get valid moves
+    color = 'B' if turn == "black" else 'W'
+    valid_moves = get_go_valid_moves(board, color, GO_STATE["last_board_state"])
+
+    if not valid_moves:
+        # No valid moves, pass
+        return await pass_go_move()
+
+    try:
+        # Use AI to choose a move
+        # For now, we'll use a simple prompt-based approach similar to chess
+        legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
+
+        # Create a prompt for the AI
+        system_text = (
+            "You are a Go game AI. Analyze the board and choose the best move. "
+            "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
+            "Choose from the provided valid moves."
+        )
+
+        user_text = (
+            f"Current turn: {turn}\n"
+            f"Board size: {GO_STATE['board_size']}x{GO_STATE['board_size']}\n"
+            f"Valid moves: {legal_moves_str}\n"
+            f"Board state: {board}\n\n"
+            "Choose the best move from the valid moves list."
+        )
+
+        # This is a simplified version - ideally we'd integrate with the AI engines properly
+        # For now, just choose a random valid move
+        import random
+        x, y = random.choice(valid_moves)
+
+    except Exception as e:
+        print(f"Engine error for {bot_name}: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        # Fallback to random move
+        import random
+        x, y = random.choice(valid_moves)
+
+    # Make the move
+    prev_board = [row[:] for row in board]
+    success, error, captured = make_go_move(board, x, y, color, GO_STATE["last_board_state"])
+
+    if not success:
+        raise HTTPException(500, f"AI made invalid move: {error}")
+
+    # Update captured count
+    if turn == "black":
+        GO_STATE["captured"]["black"] += captured
+    else:
+        GO_STATE["captured"]["white"] += captured
+
+    # Update game state
+    GO_STATE["last_move"] = {"x": x, "y": y, "color": turn}
+    GO_STATE["move_count"] += 1
+    GO_STATE["last_board_state"] = prev_board
+
+    # Switch turns
+    GO_STATE["turn"] = "white" if turn == "black" else "black"
+
+    return {
+        "board": board,
+        "turn": GO_STATE["turn"],
+        "last_move": GO_STATE["last_move"],
+        "captured": GO_STATE["captured"],
+    }

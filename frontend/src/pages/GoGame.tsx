@@ -21,34 +21,6 @@ import GameStats, { GameResult, ModelStats, EloHistoryEntry } from '@/components
 // Initial Go position (empty board)
 const INITIAL_POSITION: GoStone[] = [];
 
-// Mock data for demonstration
-const MOCK_GAME_RESULTS: GameResult[] = [];
-
-const MOCK_MODEL_STATS: ModelStats[] = [
-  {
-    modelId: 'gpt4',
-    gamesPlayed: 12,
-    wins: 8,
-    losses: 3,
-    draws: 1,
-    winRate: 66.7,
-    avgMoveTime: 1500,
-    rating: 2200,
-    ratingChange: 15
-  },
-  {
-    modelId: 'claude',
-    gamesPlayed: 10,
-    wins: 6,
-    losses: 3,
-    draws: 1,
-    winRate: 60,
-    avgMoveTime: 1200,
-    rating: 2150,
-    ratingChange: -10
-  }
-];
-
 // Games configuration
 const GAMES = [
   { id: "chess", name: "Chess" },
@@ -78,6 +50,11 @@ const GoGame = () => {
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
   const [showAnalysis, setShowAnalysis] = useState(false);
 
+  // Game statistics
+  const [gameResults, setGameResults] = useState<GameResult[]>([]);
+  const [modelStats, setModelStats] = useState<ModelStats[]>([]);
+  const [eloHistory, setEloHistory] = useState<EloHistoryEntry[]>([]);
+
   // Reset move history when game key changes
   useEffect(() => {
     setMoveHistory([]);
@@ -94,11 +71,6 @@ const GoGame = () => {
     }
   }, [gameInProgress]);
 
-  // Game statistics
-  const [gameResults, setGameResults] = useState<GameResult[]>([]);
-  const [modelStats, setModelStats] = useState<ModelStats[]>(MOCK_MODEL_STATS);
-  const [eloHistory, setEloHistory] = useState<EloHistoryEntry[]>([]);
-
   const getCurrentPlayer = () => {
     return playerConfig[currentTurn];
   };
@@ -106,6 +78,48 @@ const GoGame = () => {
   const isAITurn = () => {
     return getCurrentPlayer() !== 'human';
   };
+
+  // Convert backend board format (2D array) to frontend stones
+  const convertBackendToFrontend = (backendBoard: string[][]): GoStone[] => {
+    const stones: GoStone[] = [];
+    const size = backendBoard.length;
+
+    for (let x = 0; x < size; x++) {
+      for (let y = 0; y < size; y++) {
+        const cell = backendBoard[x][y];
+        if (cell === 'B' || cell === 'W') {
+          const col = String.fromCharCode(65 + y); // 0 -> A, 1 -> B, etc.
+          const row = x + 1; // 0 -> 1, 1 -> 2, etc.
+          stones.push({
+            color: cell === 'B' ? 'black' : 'white',
+            position: `${col}${row}`
+          });
+        }
+      }
+    }
+    return stones;
+  };
+
+  // Fetch game state from backend
+  const fetchGameState = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/go/state`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch game state');
+      }
+      const data = await response.json();
+      const frontendStones = convertBackendToFrontend(data.board);
+      setStones(frontendStones);
+      setCurrentTurn(data.turn);
+    } catch (error) {
+      console.error('Error fetching game state:', error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect to backend. Using offline mode.",
+        variant: "destructive"
+      });
+    }
+  }, []);
 
   // Trigger AI move using backend
   const triggerAIMove = useCallback(async () => {
@@ -125,23 +139,65 @@ const GoGame = () => {
     }]);
 
     try {
-      // Simulated AI move for now
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
 
-      // For now, just show a toast that Go AI is not implemented yet
-      toast({
-        title: "Coming Soon",
-        description: "Go AI integration is not yet implemented",
-        variant: "default"
+      const response = await fetch(`${API_URL}/go/ai-step`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error('AI move failed');
+      }
+
+      const data = await response.json();
+
+      // Update board state
+      const frontendStones = convertBackendToFrontend(data.board);
+      const moveObj = data.last_move ? {
+        position: `${String.fromCharCode(65 + data.last_move.y)}${data.last_move.x + 1}`,
+        color: data.last_move.color
+      } : null;
+
+      setStones(frontendStones);
+      setCurrentTurn(data.turn);
+      setLastMove(moveObj);
+
+      // Save to history
+      saveToHistory(frontendStones, data.turn, moveObj);
+
+      // Update thinking steps with result
+      setThinkingSteps(prev => [...prev, {
+        id: '2',
+        type: 'decision',
+        content: `AI placed stone at ${moveObj?.position}`,
+        confidence: 85,
+        timestamp: Date.now()
+      }]);
+
+      if (data.captured && data.captured[data.last_move.color] > 0) {
+        toast({
+          title: "Stones Captured!",
+          description: `${data.last_move.color} captured ${data.captured[data.last_move.color]} stones`,
+          variant: "default"
+        });
+      }
 
     } catch (error) {
       console.error('Error triggering AI move:', error);
-      toast({
-        title: "AI Error",
-        description: "Failed to get AI move",
-        variant: "destructive"
-      });
+      if (error instanceof Error && error.name !== 'AbortError') {
+        toast({
+          title: "AI Error",
+          description: "Failed to get AI move",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsAIThinking(false);
     }
@@ -166,17 +222,30 @@ const GoGame = () => {
       return;
     }
 
-    // Check if position is empty
-    const stone = stones.find(s => s.position === position);
-    if (!stone) {
-      // Place stone
-      const newStone: GoStone = {
-        color: currentTurn,
-        position: position
-      };
+    // Convert position string (like "A1") to coordinates
+    const col = position.charCodeAt(0) - 65; // A -> 0, B -> 1, etc.
+    const row = parseInt(position.slice(1)) - 1; // 1 -> 0, 2 -> 1, etc.
 
-      const newStones = [...stones, newStone];
+    try {
+      const response = await fetch(`${API_URL}/go/move`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ x: row, y: col })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Move failed');
+      }
+
+      const data = await response.json();
+
+      // Convert backend board to frontend stones
+      const newStones = convertBackendToFrontend(data.board);
       setStones(newStones);
+      setCurrentTurn(data.turn);
 
       const move: GoMove = {
         position: position,
@@ -184,20 +253,32 @@ const GoGame = () => {
       };
       setLastMove(move);
 
-      // Switch turns
-      const nextTurn = currentTurn === 'white' ? 'black' : 'white';
-      setCurrentTurn(nextTurn);
-
       // Save to history
-      saveToHistory(newStones, nextTurn, move);
+      saveToHistory(newStones, data.turn, move);
 
       toast({
         title: "Move Made",
         description: `${currentTurn} stone placed at ${position}`,
         variant: "default"
       });
+
+      if (data.captured && data.captured[currentTurn] > 0) {
+        toast({
+          title: "Stones Captured!",
+          description: `Captured ${data.captured[currentTurn]} stones`,
+          variant: "default"
+        });
+      }
+
+    } catch (error) {
+      console.error('Error making move:', error);
+      toast({
+        title: "Move Error",
+        description: error instanceof Error ? error.message : "Failed to make move",
+        variant: "destructive"
+      });
     }
-  }, [stones, currentTurn, gameInProgress, isAIThinking]);
+  }, [currentTurn, gameInProgress, isAIThinking]);
 
   const handleMove = useCallback((move: GoMove) => {
     const newStone: GoStone = {
@@ -220,29 +301,67 @@ const GoGame = () => {
     setLastMove(null);
     setAIResponse(null);
     setThinkingSteps([]);
-    setStones(INITIAL_POSITION);
-    setCurrentTurn('black');
 
-    setGameInProgress(true);
-    setShowAnalysis(true);
-
-    // Scroll to center the board on the screen
-    setTimeout(() => {
-      const boardElement = document.querySelector('.max-w-3xl');
-      if (boardElement) {
-        boardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    try {
+      const response = await fetch(`${API_URL}/go/new`, { method: 'POST' });
+      if (!response.ok) {
+        throw new Error('Failed to start new game');
       }
-    }, 100);
 
-    toast({
-      title: "New Game Started",
-      description: "Good luck!",
-      variant: "default"
-    });
+      // Configure bots based on player config
+      const whiteBot = playerConfig.white === 'human' ? 'human' : playerConfig.white.id;
+      const blackBot = playerConfig.black === 'human' ? 'human' : playerConfig.black.id;
+
+      const botResponse = await fetch(`${API_URL}/set-bots`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          white: whiteBot,
+          black: blackBot
+        })
+      });
+
+      if (!botResponse.ok) {
+        throw new Error('Failed to configure bots');
+      }
+
+      await fetchGameState();
+      setGameInProgress(true);
+      setShowAnalysis(true);
+
+      // Scroll to center the board on the screen
+      setTimeout(() => {
+        const boardElement = document.querySelector('.max-w-3xl');
+        if (boardElement) {
+          boardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+
+      toast({
+        title: "New Game Started",
+        description: "Good luck!",
+        variant: "default"
+      });
+
+    } catch (error) {
+      console.error('Error starting new game:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start new game",
+        variant: "destructive"
+      });
+    }
   };
 
   const resetGame = async () => {
     try {
+      const response = await fetch(`${API_URL}/go/reset`, { method: 'POST' });
+      if (!response.ok) {
+        throw new Error('Failed to reset game');
+      }
+
       // Increment game key to force component remount and clear history
       const newGameKey = gameKey + 1;
       setGameKey(newGameKey);
@@ -258,6 +377,8 @@ const GoGame = () => {
       setCurrentMoveIndex(-1);
       setStones(INITIAL_POSITION);
       setCurrentTurn('black');
+
+      await fetchGameState();
 
       toast({
         title: "Game Reset",
@@ -314,6 +435,11 @@ const GoGame = () => {
       return newHistory;
     });
   }, []);
+
+  // Initialize game state on component mount
+  useEffect(() => {
+    fetchGameState();
+  }, [fetchGameState]);
 
   const currentGame = GAMES.find(g => g.id === selectedGame);
   const handleGameChange = (gameId: string) => {
