@@ -74,7 +74,9 @@ async def connect_to_mongo():
         print("Successfully connected to MongoDB")
     except Exception as e:
         print(f"Failed to connect to MongoDB: {e}")
-        raise
+        print("Running without database - statistics will not be saved")
+        database.client = None
+        database.database = None
 
 
 async def close_mongo_connection():

@@ -108,6 +108,13 @@ class RandomAI:
             raise HTTPException(400, "No legal moves available")
         return random.choice(moves)
 
+    def choose_go_move(self, board, color, valid_moves):
+        """Choose a random valid move for Go"""
+        import random
+        if not valid_moves:
+            return None
+        return random.choice(valid_moves)
+
 
 class OllamaAI:
     def __init__(self, model: str, base: str | None = None):
@@ -155,8 +162,60 @@ class OllamaAI:
         if "from" in obj and "from_" not in obj:
             obj["from_"] = obj["from"]
         fx, fy = _alg_to_xy(obj["from_"])
-        tx, ty = _alg_to_xy(obj["to"]) 
+        tx, ty = _alg_to_xy(obj["to"])
         return (fx, fy, tx, ty)
+
+    def choose_go_move(self, board, color, valid_moves):
+        """Choose a Go move using Ollama AI"""
+        import json, re, random
+        if not valid_moves:
+            return None
+
+        legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
+        system_text = (
+            "You are a Go game AI. Analyze the board and choose the best move. "
+            "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
+            "Choose from the provided valid moves. Play strategically to control territory and capture opponent stones."
+        )
+        board_size = len(board)
+        user_text = (
+            f"Current turn: {color}\n"
+            f"Board size: {board_size}x{board_size}\n"
+            f"Valid moves (x=row, y=col): {legal_moves_str}\n"
+            f"Board state (B=Black, W=White, .=Empty): {board}\n\n"
+            "Choose the best move from the valid moves list."
+        )
+        prompt = system_text + "\n\n" + user_text
+        try:
+            data = self._post({
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.7}
+            })
+            txt = data.get("response", "")
+            try:
+                obj = json.loads(txt)
+            except Exception:
+                candidates = re.findall(r"\{.*?\}", txt, flags=re.S)
+                obj = None
+                for c in candidates:
+                    try:
+                        o = json.loads(c)
+                        if isinstance(o, dict) and "x" in o and "y" in o:
+                            obj = o
+                            break
+                    except Exception:
+                        continue
+            if obj and "x" in obj and "y" in obj:
+                x, y = int(obj["x"]), int(obj["y"])
+                if (x, y) in valid_moves:
+                    return (x, y)
+        except Exception as e:
+            print(f"Ollama Go AI error: {e}")
+
+        # Fallback to random
+        return random.choice(valid_moves)
 
 
 # Add OpenAIAI class
@@ -200,6 +259,59 @@ class OpenAIAI:
         fx, fy = _alg_to_xy(obj["from_"])
         tx, ty = _alg_to_xy(obj["to"])
         return (fx, fy, tx, ty)
+
+    def choose_go_move(self, board, color, valid_moves):
+        """Choose a Go move using OpenAI"""
+        import json, re, random
+        if not valid_moves:
+            return None
+
+        legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
+        system_text = (
+            "You are a Go game AI. Analyze the board and choose the best move. "
+            "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
+            "Choose from the provided valid moves. Play strategically to control territory and capture opponent stones."
+        )
+        board_size = len(board)
+        user_text = (
+            f"Current turn: {color}\n"
+            f"Board size: {board_size}x{board_size}\n"
+            f"Valid moves (x=row, y=col): {legal_moves_str}\n"
+            f"Board state (B=Black, W=White, .=Empty): {board}\n\n"
+            "Choose the best move from the valid moves list."
+        )
+        try:
+            resp = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_text},
+                    {"role": "user", "content": user_text},
+                ],
+                temperature=0.7,
+            )
+            txt = resp.choices[0].message.content
+            try:
+                obj = json.loads(txt)
+            except Exception:
+                candidates = re.findall(r"\{.*?\}", txt, flags=re.S)
+                obj = None
+                for c in candidates:
+                    try:
+                        o = json.loads(c)
+                        if isinstance(o, dict) and "x" in o and "y" in o:
+                            obj = o
+                            break
+                    except Exception:
+                        continue
+            if obj and "x" in obj and "y" in obj:
+                x, y = int(obj["x"]), int(obj["y"])
+                if (x, y) in valid_moves:
+                    return (x, y)
+        except Exception as e:
+            print(f"OpenAI Go AI error: {e}")
+
+        # Fallback to random
+        return random.choice(valid_moves)
 
 
 # Add Claude/Anthropic AI class
@@ -246,6 +358,58 @@ class AnthropicAI:
         tx, ty = _alg_to_xy(obj["to"])
         return (fx, fy, tx, ty)
 
+    def choose_go_move(self, board, color, valid_moves):
+        """Choose a Go move using Anthropic Claude"""
+        import json, re, random
+        if not valid_moves:
+            return None
+
+        legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
+        system_text = (
+            "You are a Go game AI. Analyze the board and choose the best move. "
+            "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
+            "Choose from the provided valid moves. Play strategically to control territory and capture opponent stones."
+        )
+        board_size = len(board)
+        user_text = (
+            f"Current turn: {color}\n"
+            f"Board size: {board_size}x{board_size}\n"
+            f"Valid moves (x=row, y=col): {legal_moves_str}\n"
+            f"Board state (B=Black, W=White, .=Empty): {board}\n\n"
+            "Choose the best move from the valid moves list."
+        )
+        try:
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=150,
+                temperature=0.7,
+                system=system_text,
+                messages=[{"role": "user", "content": user_text}]
+            )
+            txt = message.content[0].text
+            try:
+                obj = json.loads(txt)
+            except Exception:
+                candidates = re.findall(r"\{.*?\}", txt, flags=re.S)
+                obj = None
+                for c in candidates:
+                    try:
+                        o = json.loads(c)
+                        if isinstance(o, dict) and "x" in o and "y" in o:
+                            obj = o
+                            break
+                    except Exception:
+                        continue
+            if obj and "x" in obj and "y" in obj:
+                x, y = int(obj["x"]), int(obj["y"])
+                if (x, y) in valid_moves:
+                    return (x, y)
+        except Exception as e:
+            print(f"Anthropic Go AI error: {e}")
+
+        # Fallback to random
+        return random.choice(valid_moves)
+
 
 # Add Google Gemini AI class
 class GeminiAI:
@@ -285,6 +449,53 @@ class GeminiAI:
         fx, fy = _alg_to_xy(obj["from_"])
         tx, ty = _alg_to_xy(obj["to"])
         return (fx, fy, tx, ty)
+
+    def choose_go_move(self, board, color, valid_moves):
+        """Choose a Go move using Gemini"""
+        import json, re, random
+        if not valid_moves:
+            return None
+
+        legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
+        system_text = (
+            "You are a Go game AI. Analyze the board and choose the best move. "
+            "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
+            "Choose from the provided valid moves. Play strategically to control territory and capture opponent stones."
+        )
+        board_size = len(board)
+        user_text = (
+            f"Current turn: {color}\n"
+            f"Board size: {board_size}x{board_size}\n"
+            f"Valid moves (x=row, y=col): {legal_moves_str}\n"
+            f"Board state (B=Black, W=White, .=Empty): {board}\n\n"
+            "Choose the best move from the valid moves list."
+        )
+        try:
+            prompt = system_text + "\n\n" + user_text
+            response = self.model.generate_content(prompt)
+            txt = response.text
+            try:
+                obj = json.loads(txt)
+            except Exception:
+                candidates = re.findall(r"\{.*?\}", txt, flags=re.S)
+                obj = None
+                for c in candidates:
+                    try:
+                        o = json.loads(c)
+                        if isinstance(o, dict) and "x" in o and "y" in o:
+                            obj = o
+                            break
+                    except Exception:
+                        continue
+            if obj and "x" in obj and "y" in obj:
+                x, y = int(obj["x"]), int(obj["y"])
+                if (x, y) in valid_moves:
+                    return (x, y)
+        except Exception as e:
+            print(f"Gemini Go AI error: {e}")
+
+        # Fallback to random
+        return random.choice(valid_moves)
 
 
 # Add Generic HTTP API AI class for other providers
@@ -357,6 +568,76 @@ class HttpAI:
         fx, fy = _alg_to_xy(obj["from_"])
         tx, ty = _alg_to_xy(obj["to"])
         return (fx, fy, tx, ty)
+
+    def choose_go_move(self, board, color, valid_moves):
+        """Choose a Go move using HTTP AI"""
+        import json, re, random
+        if not valid_moves:
+            return None
+
+        legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
+        system_text = (
+            "You are a Go game AI. Analyze the board and choose the best move. "
+            "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
+            "Choose from the provided valid moves. Play strategically to control territory and capture opponent stones."
+        )
+        board_size = len(board)
+        user_text = (
+            f"Current turn: {color}\n"
+            f"Board size: {board_size}x{board_size}\n"
+            f"Valid moves (x=row, y=col): {legal_moves_str}\n"
+            f"Board state (B=Black, W=White, .=Empty): {board}\n\n"
+            "Choose the best move from the valid moves list."
+        )
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_text},
+                {"role": "user", "content": user_text}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 150
+        }
+
+        try:
+            response = requests.post(self.url, json=payload, headers=self.headers, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+
+            # Handle different response formats
+            txt = ""
+            if "choices" in data and len(data["choices"]) > 0:
+                if "message" in data["choices"][0]:
+                    txt = data["choices"][0]["message"]["content"]
+                elif "text" in data["choices"][0]:
+                    txt = data["choices"][0]["text"]
+            elif "content" in data:
+                txt = data["content"]
+            elif "response" in data:
+                txt = data["response"]
+
+            try:
+                obj = json.loads(txt)
+            except Exception:
+                candidates = re.findall(r"\{.*?\}", txt, flags=re.S)
+                obj = None
+                for c in candidates:
+                    try:
+                        o = json.loads(c)
+                        if isinstance(o, dict) and "x" in o and "y" in o:
+                            obj = o
+                            break
+                    except Exception:
+                        continue
+            if obj and "x" in obj and "y" in obj:
+                x, y = int(obj["x"]), int(obj["y"])
+                if (x, y) in valid_moves:
+                    return (x, y)
+        except Exception as e:
+            print(f"{self.name} Go AI error: {e}")
+
+        # Fallback to random
+        return random.choice(valid_moves)
 
 # Helper function to safely create AI engines
 def create_ai_engine(engine_type, *args, **kwargs):
@@ -1256,35 +1537,32 @@ async def go_ai_step():
         return await pass_go_move()
 
     try:
-        # Use AI to choose a move
-        # For now, we'll use a simple prompt-based approach similar to chess
-        legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
-
-        # Create a prompt for the AI
-        system_text = (
-            "You are a Go game AI. Analyze the board and choose the best move. "
-            "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
-            "Choose from the provided valid moves."
-        )
-
-        user_text = (
-            f"Current turn: {turn}\n"
-            f"Board size: {GO_STATE['board_size']}x{GO_STATE['board_size']}\n"
-            f"Valid moves: {legal_moves_str}\n"
-            f"Board state: {board}\n\n"
-            "Choose the best move from the valid moves list."
-        )
-
-        # This is a simplified version - ideally we'd integrate with the AI engines properly
-        # For now, just choose a random valid move
-        import random
-        x, y = random.choice(valid_moves)
+        # Use AI engine to choose a move
+        if hasattr(engine, 'choose_go_move'):
+            move_result = engine.choose_go_move(board, color, valid_moves)
+            if move_result:
+                x, y = move_result
+            else:
+                # Fallback to random if AI returns None
+                import random
+                x, y = random.choice(valid_moves)
+        else:
+            # Fallback to random if engine doesn't have choose_go_move method
+            print(f"Warning: {bot_name} doesn't have choose_go_move method, using random")
+            import random
+            x, y = random.choice(valid_moves)
 
     except Exception as e:
         print(f"Engine error for {bot_name}: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
         # Fallback to random move
+        import random
+        x, y = random.choice(valid_moves)
+
+    # Validate the chosen move
+    if (x, y) not in valid_moves:
+        print(f"Warning: {bot_name} returned invalid move ({x}, {y}), choosing random")
         import random
         x, y = random.choice(valid_moves)
 
