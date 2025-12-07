@@ -106,17 +106,25 @@ const ThinkingProcess = ({
 
   const formatMove = (move: MoveHistoryEntry['move']) => {
     if (!move) return '';
-    let notation = '';
 
-    // Add piece symbol (except for pawns)
-    if (move.piece.type !== 'pawn') {
-      notation += getPieceNotation(move.piece.type);
+    // Handle Go moves (just position like "K10")
+    if ('position' in move && typeof move.position === 'string') {
+      return move.position;
     }
 
-    // Add destination square
-    notation += move.to;
+    // Handle chess moves
+    if ('piece' in move && move.piece && 'type' in move.piece) {
+      let notation = '';
+      // Add piece symbol (except for pawns)
+      if (move.piece.type !== 'pawn') {
+        notation += getPieceNotation(move.piece.type);
+      }
+      // Add destination square
+      notation += move.to;
+      return notation;
+    }
 
-    return notation;
+    return '';
   };
 
   const getPieceNotation = (pieceType: string) => {

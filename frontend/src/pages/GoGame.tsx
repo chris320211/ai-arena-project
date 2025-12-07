@@ -256,9 +256,10 @@ const GoGame = () => {
       // Save to history
       saveToHistory(newStones, data.turn, move);
 
+      const colorCapitalized = currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1);
       toast({
         title: "Move Made",
-        description: `${currentTurn} stone placed at ${position}`,
+        description: `${colorCapitalized} placed a stone at ${position}`,
         variant: "default"
       });
 
