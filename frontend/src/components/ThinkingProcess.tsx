@@ -160,7 +160,12 @@ const ThinkingProcess = ({
     for (let i = 0; i < validMovesWithIndices.length; i++) {
       const { entry, originalIndex } = validMovesWithIndices[i];
       const moveNumber = Math.floor(i / 2) + 1;
-      const isWhite = i % 2 === 0;
+
+      // In Go, Black moves first (i=0 is Black)
+      // In Chess, White moves first (i=0 is White)
+      // Check if the move has a 'color' property to determine if it's a Go move
+      const isGoMove = entry.move && 'color' in entry.move;
+      const isWhite = isGoMove ? i % 2 === 1 : i % 2 === 0;
 
       if (isWhite) {
         movePairs.push({
@@ -172,6 +177,13 @@ const ThinkingProcess = ({
         // Add black's move to the last pair
         if (movePairs.length > 0) {
           movePairs[movePairs.length - 1].black = { move: entry.move, index: originalIndex };
+        } else {
+          // First move is black (Go game)
+          movePairs.push({
+            moveNumber,
+            white: null,
+            black: { move: entry.move, index: originalIndex }
+          });
         }
       }
     }

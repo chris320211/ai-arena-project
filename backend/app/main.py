@@ -173,17 +173,27 @@ class OllamaAI:
 
         legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
         system_text = (
-            "You are a Go game AI. Analyze the board and choose the best move. "
+            "You are an AGGRESSIVE Go game AI. Your PRIMARY OBJECTIVE is to SURROUND and CAPTURE opponent stones. "
             "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
-            "Choose from the provided valid moves. Play strategically to control territory and capture opponent stones."
+            "WINNING STRATEGY:\n"
+            "1. SURROUND opponent groups - cut off their liberties (empty spaces around them)\n"
+            "2. CAPTURE stones by reducing opponent groups to 0 liberties\n"
+            "3. Play moves that attack and threaten opponent stones\n"
+            "4. Control territory by surrounding empty areas\n"
+            "5. Connect your own stones to build strong groups"
         )
         board_size = len(board)
+        opponent_color = 'W' if color == 'B' else 'B'
         user_text = (
-            f"Current turn: {color}\n"
+            f"You are playing as: {color} ({'Black' if color == 'B' else 'White'})\n"
+            f"Opponent color: {opponent_color}\n"
             f"Board size: {board_size}x{board_size}\n"
             f"Valid moves (x=row, y=col): {legal_moves_str}\n"
             f"Board state (B=Black, W=White, .=Empty): {board}\n\n"
-            "Choose the best move from the valid moves list."
+            f"INSTRUCTIONS: Look for opponent {opponent_color} stones on the board. "
+            f"Play aggressively to SURROUND them and reduce their liberties. "
+            f"Choose a move that attacks opponent groups or captures stones. "
+            f"Prioritize moves that cut off escape routes for opponent stones!"
         )
         prompt = system_text + "\n\n" + user_text
         try:
@@ -268,17 +278,27 @@ class OpenAIAI:
 
         legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
         system_text = (
-            "You are a Go game AI. Analyze the board and choose the best move. "
+            "You are an AGGRESSIVE Go game AI. Your PRIMARY OBJECTIVE is to SURROUND and CAPTURE opponent stones. "
             "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
-            "Choose from the provided valid moves. Play strategically to control territory and capture opponent stones."
+            "WINNING STRATEGY:\n"
+            "1. SURROUND opponent groups - cut off their liberties (empty spaces around them)\n"
+            "2. CAPTURE stones by reducing opponent groups to 0 liberties\n"
+            "3. Play moves that attack and threaten opponent stones\n"
+            "4. Control territory by surrounding empty areas\n"
+            "5. Connect your own stones to build strong groups"
         )
         board_size = len(board)
+        opponent_color = 'W' if color == 'B' else 'B'
         user_text = (
-            f"Current turn: {color}\n"
+            f"You are playing as: {color} ({'Black' if color == 'B' else 'White'})\n"
+            f"Opponent color: {opponent_color}\n"
             f"Board size: {board_size}x{board_size}\n"
             f"Valid moves (x=row, y=col): {legal_moves_str}\n"
             f"Board state (B=Black, W=White, .=Empty): {board}\n\n"
-            "Choose the best move from the valid moves list."
+            f"INSTRUCTIONS: Look for opponent {opponent_color} stones on the board. "
+            f"Play aggressively to SURROUND them and reduce their liberties. "
+            f"Choose a move that attacks opponent groups or captures stones. "
+            f"Prioritize moves that cut off escape routes for opponent stones!"
         )
         try:
             resp = self.client.chat.completions.create(
@@ -366,17 +386,27 @@ class AnthropicAI:
 
         legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
         system_text = (
-            "You are a Go game AI. Analyze the board and choose the best move. "
+            "You are an AGGRESSIVE Go game AI. Your PRIMARY OBJECTIVE is to SURROUND and CAPTURE opponent stones. "
             "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
-            "Choose from the provided valid moves. Play strategically to control territory and capture opponent stones."
+            "WINNING STRATEGY:\n"
+            "1. SURROUND opponent groups - cut off their liberties (empty spaces around them)\n"
+            "2. CAPTURE stones by reducing opponent groups to 0 liberties\n"
+            "3. Play moves that attack and threaten opponent stones\n"
+            "4. Control territory by surrounding empty areas\n"
+            "5. Connect your own stones to build strong groups"
         )
         board_size = len(board)
+        opponent_color = 'W' if color == 'B' else 'B'
         user_text = (
-            f"Current turn: {color}\n"
+            f"You are playing as: {color} ({'Black' if color == 'B' else 'White'})\n"
+            f"Opponent color: {opponent_color}\n"
             f"Board size: {board_size}x{board_size}\n"
             f"Valid moves (x=row, y=col): {legal_moves_str}\n"
             f"Board state (B=Black, W=White, .=Empty): {board}\n\n"
-            "Choose the best move from the valid moves list."
+            f"INSTRUCTIONS: Look for opponent {opponent_color} stones on the board. "
+            f"Play aggressively to SURROUND them and reduce their liberties. "
+            f"Choose a move that attacks opponent groups or captures stones. "
+            f"Prioritize moves that cut off escape routes for opponent stones!"
         )
         try:
             message = self.client.messages.create(
@@ -458,17 +488,27 @@ class GeminiAI:
 
         legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
         system_text = (
-            "You are a Go game AI. Analyze the board and choose the best move. "
+            "You are an AGGRESSIVE Go game AI. Your PRIMARY OBJECTIVE is to SURROUND and CAPTURE opponent stones. "
             "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
-            "Choose from the provided valid moves. Play strategically to control territory and capture opponent stones."
+            "WINNING STRATEGY:\n"
+            "1. SURROUND opponent groups - cut off their liberties (empty spaces around them)\n"
+            "2. CAPTURE stones by reducing opponent groups to 0 liberties\n"
+            "3. Play moves that attack and threaten opponent stones\n"
+            "4. Control territory by surrounding empty areas\n"
+            "5. Connect your own stones to build strong groups"
         )
         board_size = len(board)
+        opponent_color = 'W' if color == 'B' else 'B'
         user_text = (
-            f"Current turn: {color}\n"
+            f"You are playing as: {color} ({'Black' if color == 'B' else 'White'})\n"
+            f"Opponent color: {opponent_color}\n"
             f"Board size: {board_size}x{board_size}\n"
             f"Valid moves (x=row, y=col): {legal_moves_str}\n"
             f"Board state (B=Black, W=White, .=Empty): {board}\n\n"
-            "Choose the best move from the valid moves list."
+            f"INSTRUCTIONS: Look for opponent {opponent_color} stones on the board. "
+            f"Play aggressively to SURROUND them and reduce their liberties. "
+            f"Choose a move that attacks opponent groups or captures stones. "
+            f"Prioritize moves that cut off escape routes for opponent stones!"
         )
         try:
             prompt = system_text + "\n\n" + user_text
@@ -577,17 +617,27 @@ class HttpAI:
 
         legal_moves_str = [{"x": x, "y": y, "position": go_pos_to_string(x, y)} for x, y in valid_moves]
         system_text = (
-            "You are a Go game AI. Analyze the board and choose the best move. "
+            "You are an AGGRESSIVE Go game AI. Your PRIMARY OBJECTIVE is to SURROUND and CAPTURE opponent stones. "
             "Respond ONLY with JSON: {\"x\": <row>, \"y\": <col>} where x and y are integers. "
-            "Choose from the provided valid moves. Play strategically to control territory and capture opponent stones."
+            "WINNING STRATEGY:\n"
+            "1. SURROUND opponent groups - cut off their liberties (empty spaces around them)\n"
+            "2. CAPTURE stones by reducing opponent groups to 0 liberties\n"
+            "3. Play moves that attack and threaten opponent stones\n"
+            "4. Control territory by surrounding empty areas\n"
+            "5. Connect your own stones to build strong groups"
         )
         board_size = len(board)
+        opponent_color = 'W' if color == 'B' else 'B'
         user_text = (
-            f"Current turn: {color}\n"
+            f"You are playing as: {color} ({'Black' if color == 'B' else 'White'})\n"
+            f"Opponent color: {opponent_color}\n"
             f"Board size: {board_size}x{board_size}\n"
             f"Valid moves (x=row, y=col): {legal_moves_str}\n"
             f"Board state (B=Black, W=White, .=Empty): {board}\n\n"
-            "Choose the best move from the valid moves list."
+            f"INSTRUCTIONS: Look for opponent {opponent_color} stones on the board. "
+            f"Play aggressively to SURROUND them and reduce their liberties. "
+            f"Choose a move that attacks opponent groups or captures stones. "
+            f"Prioritize moves that cut off escape routes for opponent stones!"
         )
         payload = {
             "model": self.model,
