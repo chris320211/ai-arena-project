@@ -40,12 +40,12 @@ const AI_MODELS: AIModel[] = [
     color: 'from-violet-500 to-purple-600'
   },
   {
-    id: 'ollama_phi35',
-    name: 'Phi 3.5',
-    description: 'Lightweight with strong math',
-    strength: 1200,
-    style: 'Compact & Tactical',
-    icon: <Target className="w-5 h-5" />,
+    id: 'openai_gpt35_turbo_instruct',
+    name: 'GPT-3.5 Turbo Instruct',
+    description: 'Classic instruct model',
+    strength: 1500,
+    style: 'Instruction-Following',
+    icon: <Brain className="w-5 h-5" />,
     color: 'from-blue-500 to-cyan-600'
   },
   {

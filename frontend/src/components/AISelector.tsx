@@ -53,12 +53,12 @@ const AI_MODELS: AIModel[] = [
     color: 'from-violet-500 to-purple-600'
   },
   {
-    id: 'ollama_phi35',
-    name: 'Phi 3.5',
-    description: 'Lightweight with strong math',
-    strength: 1200,
-    style: 'Compact & Tactical',
-    icon: <Target className="w-4 h-4" />,
+    id: 'openai_gpt35_turbo_instruct',
+    name: 'GPT-3.5 Turbo Instruct',
+    description: 'Classic instruct model',
+    strength: 1500,
+    style: 'Instruction-Following',
+    icon: <Brain className="w-4 h-4" />,
     color: 'from-blue-500 to-cyan-600'
   },
   {
@@ -143,7 +143,7 @@ export const AISelector = ({ label, value, onChange, accentColor = "primary", op
         console.error("Error fetching AI models:", error);
         // Fallback to showing human and some default models
         const fallbackModels = AI_MODELS.filter(m =>
-          m.id === 'human' || ['openai_gpt4o_mini', 'anthropic_claude_haiku', 'ollama_phi35'].includes(m.id)
+          m.id === 'human' || ['openai_gpt4o_mini', 'anthropic_claude_haiku', 'openai_gpt35_turbo_instruct'].includes(m.id)
         );
         setAvailableModels(fallbackModels);
       } finally {

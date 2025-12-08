@@ -238,15 +238,28 @@ class OpenAIAI:
         legal = _legal_moves_alg(board, side)
         system_text = _get_ai_system_prompt()
         user_text = _get_ai_user_prompt(board, side, legal)
-        resp = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_text},
-                {"role": "user", "content": user_text},
-            ],
-            temperature=0.7,
-        )
-        txt = resp.choices[0].message.content
+
+        # Use completions API for instruct models
+        if "instruct" in self.model.lower():
+            prompt = system_text + "\n\n" + user_text
+            resp = self.client.completions.create(
+                model=self.model,
+                prompt=prompt,
+                temperature=0.7,
+                max_tokens=150,
+            )
+            txt = resp.choices[0].text
+        else:
+            # Use chat completions API for other models
+            resp = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_text},
+                    {"role": "user", "content": user_text},
+                ],
+                temperature=0.7,
+            )
+            txt = resp.choices[0].message.content
         import json, re
         try:
             obj = json.loads(txt)
@@ -301,15 +314,27 @@ class OpenAIAI:
             f"Prioritize moves that cut off escape routes for opponent stones!"
         )
         try:
-            resp = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_text},
-                    {"role": "user", "content": user_text},
-                ],
-                temperature=0.7,
-            )
-            txt = resp.choices[0].message.content
+            # Use completions API for instruct models
+            if "instruct" in self.model.lower():
+                prompt = system_text + "\n\n" + user_text
+                resp = self.client.completions.create(
+                    model=self.model,
+                    prompt=prompt,
+                    temperature=0.7,
+                    max_tokens=150,
+                )
+                txt = resp.choices[0].text
+            else:
+                # Use chat completions API for other models
+                resp = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_text},
+                        {"role": "user", "content": user_text},
+                    ],
+                    temperature=0.7,
+                )
+                txt = resp.choices[0].message.content
             try:
                 obj = json.loads(txt)
             except Exception:
@@ -709,7 +734,7 @@ def create_ai_engine(engine_type, *args, **kwargs):
 ENGINES = {
     "random": RandomAI(),
     "anthropic_claude_haiku": create_ai_engine("anthropic", "claude-3-5-haiku-20241022") if os.getenv("ANTHROPIC_API_KEY") else None,
-    "ollama_phi35": OllamaAI(os.getenv("OLLAMA_MODEL_PHI35", "phi3.5")),
+    "openai_gpt35_turbo_instruct": create_ai_engine("openai", "gpt-3.5-turbo-instruct") if os.getenv("OPENAI_API_KEY") else None,
     "openai_gpt4o_mini": OpenAIAI("gpt-4o-mini"),
 
     # New API-based bots (will be None if API keys are not provided)
@@ -1218,6 +1243,11 @@ class SetBotsPayload(BaseModel):
     white: Optional[str] = None
     black: Optional[str] = None
 
+@app.get("/models")
+def get_models():
+    """Get available AI models"""
+    return {"models": {k: k for k in ENGINES.keys()}}
+
 @app.post("/set-bots")
 def set_bots(payload: SetBotsPayload):
     for color in ("white", "black"):
@@ -1371,7 +1401,6 @@ def api_diag():
         "ollama_base": os.getenv("OLLAMA_BASE", "http://127.0.0.1:11434"),
         "ollama_models": {
             "ollama_llama3": os.getenv("OLLAMA_MODEL_LLAMA3", "llama3:8b"),
-            "ollama_phi35": os.getenv("OLLAMA_MODEL_PHI35", "phi3.5"),
         },
         "bots": BOTS,
         "turn": STATE["turn"],
