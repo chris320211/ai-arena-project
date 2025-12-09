@@ -88,6 +88,8 @@ async def close_mongo_connection():
 async def save_game_result(game_result: GameResult) -> str:
     """Save a game result to the database"""
     db = await get_database()
+    if db is None:
+        return ""
     result = await db.game_results.insert_one(game_result.dict(by_alias=True))
     return str(result.inserted_id)
 
@@ -164,6 +166,8 @@ async def update_model_stats(model_id: str, won: bool, drew: bool, moves: int, g
 async def get_all_model_stats() -> List[ModelStats]:
     """Get statistics for all models"""
     db = await get_database()
+    if db is None:
+        return []
     cursor = db.model_stats.find().sort("rating", -1)
     stats = []
     async for doc in cursor:
