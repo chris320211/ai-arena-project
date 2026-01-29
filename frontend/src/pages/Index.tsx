@@ -721,8 +721,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
       {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
+      <header className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+        <div className="container mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -814,7 +814,7 @@ const Index = () => {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
