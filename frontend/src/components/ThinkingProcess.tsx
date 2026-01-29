@@ -301,7 +301,7 @@ const ThinkingProcess = ({
       </Card>
 
       {/* AI Analysis */}
-      <Card className="w-full flex flex-col">
+      <Card className="w-full">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -317,30 +317,30 @@ const ThinkingProcess = ({
           </CardTitle>
         </CardHeader>
       
-      <CardContent className="overflow-hidden h-48 flex items-center justify-center">
-        {!isThinking && !aiResponse ? (
-          <div className="flex items-center justify-center w-full h-full text-muted-foreground">
-            <Brain className="w-12 h-12 opacity-50" />
-          </div>
-        ) : (
-          <ScrollArea className="h-full w-full">
-            {isThinking ? (
-              <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary">
-                <Clock className="w-4 h-4 animate-spin" />
-                <span className="text-sm font-medium">Analyzing position...</span>
-              </div>
+      <CardContent className="p-4">
+        <div className="h-48">
+          {!isThinking && !aiResponse ? (
+            <div className="flex items-center justify-center w-full h-full text-muted-foreground">
+              <Brain className="w-12 h-12 opacity-50" />
+            </div>
+          ) : (
+            <ScrollArea className="h-full w-full pr-4">
+              {isThinking ? (
+                <div className="space-y-4">
+                <div className="flex items-center justify-center gap-2 text-primary sticky top-0 bg-background py-2 z-10">
+                  <Clock className="w-4 h-4 animate-spin" />
+                  <span className="text-sm font-medium">Analyzing position...</span>
+                </div>
 
-              <div className="space-y-3">
-                {displayedSteps.map((step, index) => (
-                  <div
-                    key={step.id}
-                    className={cn(
-                      "p-3 rounded-lg border transition-all duration-300",
-                      "animate-fade-in",
-                      index === displayedSteps.length - 1 && isThinking && "ring-2 ring-primary/30"
-                    )}
-                  >
+                <div className="space-y-3">
+                  {displayedSteps.map((step, index) => (
+                    <div
+                      key={`${step.id}-${index}`}
+                      className={cn(
+                        "p-3 rounded-lg border bg-card",
+                        index === displayedSteps.length - 1 && isThinking && "ring-2 ring-primary/30"
+                      )}
+                    >
                     <div className="flex items-start gap-3">
                       <div className={cn(
                         "p-1.5 rounded-full bg-gradient-to-r flex-shrink-0",
@@ -455,6 +455,7 @@ const ThinkingProcess = ({
             )}
           </ScrollArea>
         )}
+        </div>
       </CardContent>
       </Card>
 
