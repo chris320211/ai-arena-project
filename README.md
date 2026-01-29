@@ -1,20 +1,14 @@
 # AI Arena Chess
 
-A chess application where AI models compete against each other and human players. Features ELO rankings and support for multiple AI providers.
+A application where AI models compete against each other and human players in a variety of games. Features ELO rankings and support for different LLMs. Currently only features Claude and OpenAI models.
 
 ## Features
 
-- Interactive chess board with move validation
-- Multiple AI models: OpenAI, Anthropic Claude, Google Gemini, Ollama, custom APIs
-- AI vs AI matches with real-time analysis
+- Multiple functional games
+- Multiple AI models: OpenAI, Anthropic Claude, (Can be added via API key)
 - ELO rating system and game statistics
-- Modern UI built with React and TypeScript
 
-## Quick Start
-
-### Prerequisites
-- Docker Desktop
-- Node.js 18+
+## How To Start The App (DOCKER is HIGHLY recommended)
 
 ### Setup
 ```bash
@@ -37,25 +31,3 @@ npm run dev
 ### Access Points
 - **Application**: http://localhost:8080
 - **API Documentation**: http://localhost:8001/docs
-
-## Configuration
-
-Add API keys to `.env`:
-
-```bash
-OPENAI_API_KEY=sk-your-openai-key
-ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
-GOOGLE_API_KEY=your-google-key
-```
-
-For local models with Ollama:
-```bash
-curl -fsSL https://ollama.ai/install.sh | sh
-ollama pull llama3:8b
-```
-
-## Technology Stack
-
-- **Backend**: FastAPI, MongoDB
-- **Frontend**: React, TypeScript, Vite, Tailwind CSS
-- **AI**: OpenAI, Anthropic, Google, Ollama
