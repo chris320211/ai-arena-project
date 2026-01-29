@@ -919,52 +919,76 @@ def _legal_moves_alg(board, side) -> List[dict]:
         out.append({"from": _xy_to_alg(fx, fy), "to": _xy_to_alg(tx, ty)})
     return out
 
+def _move_to_pgn(move: dict, board, move_number: int, is_white: bool) -> str:
+    """Convert a move dict to PGN algebraic notation (simplified)"""
+    from_sq = move["from"]
+    to_sq = move["to"]
+
+    # Get piece at from square
+    fx, fy = _alg_to_xy(from_sq)
+    piece = board[fx][fy]
+
+    # Simple conversion - just use from-to notation for now
+    # A more sophisticated version would use standard algebraic notation
+    move_str = f"{from_sq}{to_sq}"
+
+    if is_white:
+        return f"{move_number}. {move_str}"
+    else:
+        return move_str
+
+def _moves_to_pgn(move_history: List[dict]) -> str:
+    """Convert move history to strict PGN format (moves only, no metadata)"""
+    if not move_history:
+        return ""
+
+    pgn_moves = []
+
+    for idx, move in enumerate(move_history):
+        is_white = idx % 2 == 0
+        move_number = (idx // 2) + 1
+
+        if is_white:
+            pgn_moves.append(f"{move_number}. {move['from']}{move['to']}")
+        else:
+            pgn_moves.append(f"{move['from']}{move['to']}")
+
+    return " ".join(pgn_moves)
+
 def _get_ai_system_prompt() -> str:
-    """Get improved system prompt for AI chess engines"""
-    return (
-        "You are a HIGHLY COMPETITIVE chess grandmaster. Your ONLY objective is to DEFEAT your opponent and WIN this game. "
-        "Every move must be calculated to maximize your winning chances. Play aggressively and strategically. "
-        "DO NOT play passively or make random moves. ACTIVELY seek to capture opponent pieces, control the board, and deliver checkmate. "
-        "Respond ONLY with JSON matching: {\"from\":\"e2\", \"to\":\"e4\", \"promotion\":null}. "
-        "Choose strictly from the provided legal_moves list."
-    )
+    """Get improved system prompt for AI chess engines with in-context examples"""
+    return """You are a chess engine. You must repeat the entire game exactly, then provide ONE legal next move in algebraic notation. No explanations.
+
+Example 1:
+Game: 1. e2e4 e7e5 2. Ng1f3 Nb8c6 3. Bf1b5
+Your move: a7a6
+
+Example 2:
+Game: 1. d2d4 d7d5 2. c2c4 e7e6 3. Nb1c3 Ng8f6 4. Bc1g5
+Your move: Bf8e7
+
+Example 3:
+Game: 1. e2e4 c7c5 2. Ng1f3 d7d6 3. d2d4 c5d4 4. Nf3d4 Ng8f6 5. Nb1c3
+Your move: a7a6
+
+Format: Repeat the entire game in PGN format, then provide your next move as JSON: {"from":"e2", "to":"e4", "promotion":null}"""
 
 def _get_ai_user_prompt(board, side, legal_moves) -> str:
-    """Get improved user prompt with strategic priorities"""
-    # Check for opponent king position to help AI recognize check opportunities
-    opp_side = "black" if side == "white" else "white"
-    opp_king = 'k' if opp_side == "black" else 'K'
+    """Get user prompt with strict PGN format and no metadata"""
+    # Convert move history to strict PGN format
+    pgn_game = _moves_to_pgn(STATE.get("move_history", []))
 
-    king_pos = None
-    for x in range(8):
-        for y in range(8):
-            if board[x][y] == opp_king:
-                king_pos = _xy_to_alg(x, y)
-                break
-        if king_pos:
-            break
+    # If no moves yet, start with empty game
+    if not pgn_game:
+        pgn_game = "[Game start]"
 
-    is_in_check_now = is_in_check(board, opp_side)
+    # Format legal moves as JSON list for clarity
+    legal_moves_str = str(legal_moves)
 
     prompt = (
-        f"YOU ARE PLAYING AS: {side.upper()}\n"
-        f"OPPONENT KING LOCATION: {king_pos}\n"
-        f"OPPONENT IN CHECK: {is_in_check_now}\n"
-        f"YOUR LEGAL MOVES: {legal_moves}\n"
-        f"CURRENT BOARD STATE (8x8 grid): {_board_array(board)}\n\n"
-        "⚔️ WINNING STRATEGY - FOLLOW THIS ORDER:\n"
-        "1. ✓ CHECKMATE NOW — If you can deliver checkmate this move, DO IT IMMEDIATELY. This wins the game!\n"
-        "2. ✓ CAPTURE HIGH-VALUE PIECES — Take opponent's Queen (9 pts), Rook (5 pts), Bishop/Knight (3 pts), Pawn (1 pt). Always capture when advantageous!\n"
-        "3. ✓ PUT OPPONENT IN CHECK — Attack their King to force defensive moves and gain tempo. This weakens their position!\n"
-        "4. ✓ THREATEN VALUABLE PIECES — Attack their Queen, Rooks, and other pieces to force them into bad positions!\n"
-        "5. ✓ DEFEND YOUR PIECES — Protect your own valuable pieces from capture, but only if they're actually threatened!\n"
-        "6. ✓ CONTROL THE CENTER — Develop pieces to control central squares (e4, d4, e5, d5) for better mobility!\n"
-        "7. ✓ CASTLE FOR KING SAFETY — Protect your King early by castling, but don't delay attacks!\n"
-        "8. ✓ PROMOTE PAWNS IN ENDGAME — Push pawns to the 8th rank to get a new Queen!\n\n"
-        "🎯 CRITICAL: You are in a COMPETITIVE MATCH. Your opponent is trying to BEAT YOU. \n"
-        "Fight back! Look for aggressive moves that capture pieces, threaten checkmate, or put pressure on your opponent.\n"
-        "DO NOT make passive developing moves if there are tactical opportunities available!\n\n"
-        "NOW: Analyze the board and select the STRONGEST, most AGGRESSIVE move from your legal_moves list that gives you the best winning advantage!"
+        f"Game: {pgn_game}\n\n"
+        f"Legal moves: {legal_moves_str}\n\n"
+        f"Provide your next move as JSON: {{\"from\":\"XX\", \"to\":\"YY\", \"promotion\":null}}"
     )
 
     return prompt

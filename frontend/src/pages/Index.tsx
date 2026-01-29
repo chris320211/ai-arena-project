@@ -270,11 +270,11 @@ const Index = () => {
       console.error('Error triggering AI move:', error);
       // Only show error if it's not an abort error
       if (error instanceof Error && error.name !== 'AbortError') {
-        toast({
-          title: "AI Error",
-          description: "Failed to get AI move",
-          variant: "destructive"
-        });
+        // toast({
+        //   title: "AI Error",
+        //   description: "Failed to get AI move",
+        //   variant: "destructive"
+        // });
       }
     } finally {
       setIsAIThinking(false);
